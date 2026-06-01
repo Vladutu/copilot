@@ -18,41 +18,50 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
+import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun StatusScreen(state: UiState) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        // Connection state
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(20.dp).background(state.conn.color(), CircleShape))
             Box(Modifier.size(12.dp))
             Text(state.conn.label(), style = MaterialTheme.typography.headlineMedium)
         }
 
-        Column {
-            Text("Last command", style = MaterialTheme.typography.titleMedium)
+        // Clock skew (only after we've observed one message)
+        state.skewSec?.let { skew ->
+            val sign = if (skew >= 0) "+" else ""
+            val color = if (abs(skew) > Config.MAX_MESSAGE_AGE_SEC) Color(0xFFC62828) else Color.Gray
             Text(
-                text = state.lastMessage?.let { msg ->
-                    val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                        .format(Date(msg.ts * 1000))
-                    "▶ ${msg.form} ${msg.id} · $time"
-                } ?: "—",
-                style = MaterialTheme.typography.headlineLarge,
+                text = "Clock skew: $sign${skew}s (phone − box)",
+                style = MaterialTheme.typography.titleMedium,
+                color = color,
             )
-            state.lastLaunchError?.let {
-                Text(
-                    text = "Last error: $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Red,
-                )
+        }
+
+        // Recent events
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Recent events", style = MaterialTheme.typography.titleMedium)
+            if (state.recent.isEmpty()) {
+                Text("—", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+            } else {
+                for (event in state.recent) {
+                    EventRow(event)
+                }
             }
         }
+
+        Box(Modifier.weight(1f, fill = true))
 
         Text(
             text = "topic: ${Config.NTFY_TOPIC.take(16)}…",
@@ -60,6 +69,17 @@ fun StatusScreen(state: UiState) {
             color = Color.Gray,
         )
     }
+}
+
+@Composable
+private fun EventRow(event: RecentEvent) {
+    val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        .format(Date(event.timeSec * 1000))
+    Text(
+        text = "$time  ${event.text}",
+        style = MaterialTheme.typography.bodyLarge,
+        color = if (event.ok) Color(0xFF2E7D32) else Color(0xFFC62828),
+    )
 }
 
 private fun ConnState.color(): Color = when (this) {

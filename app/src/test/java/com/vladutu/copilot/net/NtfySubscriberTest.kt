@@ -10,6 +10,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -40,22 +41,35 @@ class NtfySubscriberTest {
     )
 
     @Test
-    fun `emits parsed messages from the stream`() = runTest {
+    fun `emits accepted result for a valid message`() = runTest {
         val payload = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLone"}"""
         server.enqueue(MockResponse().setBody(envelope(payload)))
 
-        val msg = withTimeout(2000) { makeSubscriber().subscribe().first() }
-        assertEquals("PLone", msg.id)
+        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        assertTrue(result is ParseResult.Accepted)
+        assertEquals("PLone", (result as ParseResult.Accepted).message.id)
     }
 
     @Test
-    fun `skips keepalive lines`() = runTest {
+    fun `emits rejected result for a stale message`() = runTest {
+        val staleTs = now - maxAge - 100
+        val payload = """{"v":1,"ts":$staleTs,"cmd":"ytmusic","form":"playlist","id":"PLstale"}"""
+        server.enqueue(MockResponse().setBody(envelope(payload)))
+
+        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("stale"))
+    }
+
+    @Test
+    fun `filters out keepalive lines, only emits real results`() = runTest {
         val keepalive = """{"id":"x","time":$now,"event":"keepalive","topic":"t"}"""
         val payload = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLgood"}"""
         server.enqueue(MockResponse().setBody(keepalive + "\n" + envelope(payload)))
 
-        val msg = withTimeout(2000) { makeSubscriber().subscribe().first() }
-        assertEquals("PLgood", msg.id)
+        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        assertTrue(result is ParseResult.Accepted)
+        assertEquals("PLgood", (result as ParseResult.Accepted).message.id)
     }
 
     @Test
@@ -66,7 +80,10 @@ class NtfySubscriberTest {
         server.enqueue(MockResponse().setBody(envelope(second)))
 
         val ids = withTimeout(5000) {
-            makeSubscriber().subscribe().take(2).toList().map { it.id }
+            makeSubscriber().subscribe()
+                .take(2)
+                .toList()
+                .map { (it as ParseResult.Accepted).message.id }
         }
         assertEquals(listOf("PLfirst", "PLsecond"), ids)
     }

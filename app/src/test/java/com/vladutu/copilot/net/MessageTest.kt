@@ -2,7 +2,7 @@ package com.vladutu.copilot.net
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MessageTest {
@@ -21,21 +21,52 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
         )
-        val msg = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
-        assertNotNull(msg)
-        assertEquals("ytmusic", msg!!.cmd)
-        assertEquals("playlist", msg.form)
-        assertEquals("PLabc", msg.id)
-        assertEquals(now, msg.ts)
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Accepted)
+        val accepted = result as ParseResult.Accepted
+        assertEquals("ytmusic", accepted.message.cmd)
+        assertEquals("playlist", accepted.message.form)
+        assertEquals("PLabc", accepted.message.id)
+        assertEquals(now, accepted.message.ts)
+        assertEquals(0L, accepted.skewSec)
     }
 
     @Test
-    fun `rejects stale messages older than maxAge`() {
+    fun `accepted message reports positive skew when box is ahead`() {
+        val ts = now - 5
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$ts,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Accepted)
+        assertEquals(5L, (result as ParseResult.Accepted).skewSec)
+    }
+
+    @Test
+    fun `accepted message reports negative skew when box is behind`() {
+        val ts = now + 5
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$ts,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Accepted)
+        assertEquals(-5L, (result as ParseResult.Accepted).skewSec)
+    }
+
+    @Test
+    fun `rejects stale messages older than maxAge with skew`() {
         val staleTs = now - maxAge - 1
         val env = ntfyEnvelope(
             """{"v":1,"ts":$staleTs,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        val rejected = result as ParseResult.Rejected
+        assertTrue(
+            "expected 'stale' in reason but was '${rejected.reason}'",
+            rejected.reason.contains("stale"),
+        )
+        assertEquals(maxAge + 1, rejected.skewSec)
     }
 
     @Test
@@ -44,7 +75,8 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$edgeTs,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
         )
-        assertNotNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Accepted)
     }
 
     @Test
@@ -53,7 +85,8 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$futureTs,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
     }
 
     @Test
@@ -61,7 +94,9 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":2,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLabc"}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("schema"))
     }
 
     @Test
@@ -69,7 +104,9 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$now,"cmd":"waze","form":"playlist","id":"PLabc"}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("cmd"))
     }
 
     @Test
@@ -77,7 +114,9 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"VIDabc"}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("form"))
     }
 
     @Test
@@ -85,25 +124,29 @@ class MessageTest {
         val env = ntfyEnvelope(
             """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":""}"""
         )
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("id"))
     }
 
     @Test
-    fun `tolerates ntfy keepalive events`() {
+    fun `skips ntfy keepalive events`() {
         val keepalive = """{"id":"x","time":$now,"event":"keepalive","topic":"t"}"""
-        assertNull(Message.parseEnvelope(keepalive, nowSec = now, maxAgeSec = maxAge))
+        assertEquals(ParseResult.Skipped, Message.parseEnvelope(keepalive, nowSec = now, maxAgeSec = maxAge))
     }
 
     @Test
-    fun `tolerates malformed json`() {
-        assertNull(Message.parseEnvelope("not json", nowSec = now, maxAgeSec = maxAge))
-        assertNull(Message.parseEnvelope("", nowSec = now, maxAgeSec = maxAge))
-        assertNull(Message.parseEnvelope("{}", nowSec = now, maxAgeSec = maxAge))
+    fun `skips malformed envelope json`() {
+        assertEquals(ParseResult.Skipped, Message.parseEnvelope("not json", nowSec = now, maxAgeSec = maxAge))
+        assertEquals(ParseResult.Skipped, Message.parseEnvelope("", nowSec = now, maxAgeSec = maxAge))
+        assertEquals(ParseResult.Skipped, Message.parseEnvelope("{}", nowSec = now, maxAgeSec = maxAge))
     }
 
     @Test
-    fun `tolerates malformed inner message`() {
+    fun `rejects malformed inner message`() {
         val env = """{"id":"x","time":$now,"event":"message","topic":"t","message":"not json"}"""
-        assertNull(Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge))
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertNotNull((result as ParseResult.Rejected).reason)
     }
 }

@@ -12,8 +12,8 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.StatusActivity
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.launch.AppLauncher
-import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.net.NtfySubscriber
+import com.vladutu.copilot.net.ParseResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,11 +30,18 @@ sealed class ConnState {
     data class Error(val message: String) : ConnState()
 }
 
+/** One row in the status screen's "recent events" list. */
+data class RecentEvent(
+    val timeSec: Long,
+    val text: String,
+    val ok: Boolean,
+)
+
 data class UiState(
     val conn: ConnState = ConnState.Reconnecting,
-    val lastMessage: Message? = null,
-    val lastLaunchOk: Boolean? = null,
-    val lastLaunchError: String? = null,
+    val recent: List<RecentEvent> = emptyList(),
+    /** Most recent (now - msg.ts) we observed. Positive = box clock ahead of phone. */
+    val skewSec: Long? = null,
 )
 
 class ListenerService : Service() {
@@ -73,18 +80,44 @@ class ListenerService : Service() {
 
         _state.value = _state.value.copy(conn = ConnState.Reconnecting)
 
-        subscriber.subscribe().collect { msg ->
-            _state.value = _state.value.copy(conn = ConnState.Connected, lastMessage = msg)
-            val result = withContext(Dispatchers.Main) { launcher.launch(msg) }
-            _state.value = when (result) {
-                is AppLauncher.Result.Ok ->
-                    _state.value.copy(lastLaunchOk = true, lastLaunchError = null)
-                is AppLauncher.Result.Failed -> {
-                    Log.w(TAG, "launch failed: ${result.reason}")
-                    _state.value.copy(lastLaunchOk = false, lastLaunchError = result.reason)
+        subscriber.subscribe().collect { result ->
+            // Any result coming through means the stream is alive.
+            _state.value = _state.value.copy(conn = ConnState.Connected)
+
+            when (result) {
+                is ParseResult.Accepted -> {
+                    val outcome = withContext(Dispatchers.Main) { launcher.launch(result.message) }
+                    val ok = outcome is AppLauncher.Result.Ok
+                    val text = when (outcome) {
+                        AppLauncher.Result.Ok ->
+                            "▶ ${result.message.id} · launched"
+                        is AppLauncher.Result.Failed -> {
+                            Log.w(TAG, "launch failed: ${outcome.reason}")
+                            "✗ ${result.message.id} · ${outcome.reason}"
+                        }
+                    }
+                    appendRecent(text, ok = ok, skewSec = result.skewSec)
                 }
+                is ParseResult.Rejected -> {
+                    appendRecent("✗ ${result.reason}", ok = false, skewSec = result.skewSec)
+                }
+                ParseResult.Skipped -> Unit // never reaches us; subscriber filters
             }
         }
+    }
+
+    private fun appendRecent(text: String, ok: Boolean, skewSec: Long?) {
+        val event = RecentEvent(
+            timeSec = System.currentTimeMillis() / 1000L,
+            text = text,
+            ok = ok,
+        )
+        val newRecent = (listOf(event) + _state.value.recent).take(RECENT_EVENTS_MAX)
+        _state.value = _state.value.copy(
+            recent = newRecent,
+            // Only update skew when we have a fresh observation; otherwise keep what we knew.
+            skewSec = skewSec ?: _state.value.skewSec,
+        )
     }
 
     private fun buildNotification(): Notification {
@@ -105,6 +138,7 @@ class ListenerService : Service() {
     companion object {
         const val TAG = "ListenerService"
         const val NOTIF_ID = 1
+        const val RECENT_EVENTS_MAX = 5
 
         // The service is effectively a singleton at runtime; the Activity reads state
         // through this rather than a full bind/unbind (overkill for MVP).

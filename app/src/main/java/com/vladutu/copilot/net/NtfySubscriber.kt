@@ -19,7 +19,7 @@ class NtfySubscriber(
     private val backoffInitialMs: Long = 1_000L,
     private val backoffMaxMs: Long = 30_000L,
 ) {
-    fun subscribe(): Flow<Message> = flow {
+    fun subscribe(): Flow<ParseResult> = flow {
         var delayMs = backoffInitialMs
         val req = Request.Builder().url("$base/$topic/json").build()
 
@@ -31,8 +31,10 @@ class NtfySubscriber(
                     val source = response.body!!.source()
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line() ?: break
-                        val msg = Message.parseEnvelope(line, clock(), maxAgeSec)
-                        if (msg != null) emit(msg)
+                        val result = Message.parseEnvelope(line, clock(), maxAgeSec)
+                        // Skipped == purely uninteresting noise (keepalive, malformed envelope).
+                        // Rejected + Accepted both go upstream so the status screen can show them.
+                        if (result !is ParseResult.Skipped) emit(result)
                     }
                 }
             } catch (e: IOException) {
