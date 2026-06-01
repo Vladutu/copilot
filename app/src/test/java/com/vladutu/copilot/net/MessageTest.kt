@@ -112,11 +112,54 @@ class MessageTest {
     @Test
     fun `rejects unknown form`() {
         val env = ntfyEnvelope(
-            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"VIDabc"}"""
+            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"album","id":"someId12345"}"""
         )
         val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
         assertTrue(result is ParseResult.Rejected)
         assertTrue((result as ParseResult.Rejected).reason.contains("form"))
+    }
+
+    @Test
+    fun `accepts ytmusic song message with valid 11-char id`() {
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"dQw4w9WgXcQ"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue("expected Accepted but was $result", result is ParseResult.Accepted)
+        val accepted = result as ParseResult.Accepted
+        assertEquals("ytmusic", accepted.message.cmd)
+        assertEquals("song", accepted.message.form)
+        assertEquals("dQw4w9WgXcQ", accepted.message.id)
+    }
+
+    @Test
+    fun `rejects song message with too-short id`() {
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"short"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("id"))
+    }
+
+    @Test
+    fun `rejects song message with too-long id`() {
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"thisIsWayTooLongForAVideoId"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("id"))
+    }
+
+    @Test
+    fun `rejects song message with invalid characters in id`() {
+        val env = ntfyEnvelope(
+            """{"v":1,"ts":$now,"cmd":"ytmusic","form":"song","id":"abc!@#defgh"}"""
+        )
+        val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("id"))
     }
 
     @Test

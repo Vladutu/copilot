@@ -12,6 +12,8 @@ data class Message(
     val id: String,
 ) {
     companion object {
+        private val VIDEO_ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
+
         /**
          * Parses one ntfy event line. Returns a [ParseResult] describing exactly
          * what happened so callers can surface the reason on a status screen
@@ -44,10 +46,13 @@ data class Message(
             if (cmd != "ytmusic") return ParseResult.Rejected("unknown cmd=$cmd", skew)
 
             val form = body.optString("form")
-            if (form != "playlist") return ParseResult.Rejected("unknown form=$form", skew)
+            if (form != "playlist" && form != "song") return ParseResult.Rejected("unknown form=$form", skew)
 
             val id = body.optString("id")
             if (id.isBlank()) return ParseResult.Rejected("blank id", skew)
+            if (form == "song" && !VIDEO_ID_REGEX.matches(id)) {
+                return ParseResult.Rejected("invalid id for form=song", skew)
+            }
 
             return ParseResult.Accepted(Message(v, ts, cmd, form, id), skew)
         }
