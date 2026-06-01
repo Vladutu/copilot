@@ -1,0 +1,63 @@
+# Copilot — one-time setup on the car AI box
+
+Do this once after installing or updating Copilot. Each step matters; skipping
+the *Display over other apps* step is the most common reason "nothing happens"
+when you tap a tile on the phone.
+
+## 1. Install the APK
+
+Sideload `app/build/outputs/apk/debug/app-debug.apk` onto the box.
+
+## 2. Open Copilot once
+
+Android does not deliver broadcasts (including `BOOT_COMPLETED`) to an app that
+has never been opened by a human. Tap the icon.
+
+## 3. Grant *Display over other apps*
+
+Settings → Apps → Copilot → **Display over other apps** → Allow.
+
+This is what lets the background service launch YouTube Music. Without it,
+commands arrive but nothing happens — and there is no exception you can see
+in logcat. This is the #1 silent failure mode.
+
+## 4. Grant notification permission
+
+On first launch Copilot asks for notification permission. Allow it — that is
+how you see "Copilot listening" in the shade and confirm the service is alive.
+
+## 5. Disable battery optimization
+
+Settings → Apps → Copilot → **Battery** → **Unrestricted** (or "Don't optimize").
+
+## 6. Place Copilot in the launcher's widget slot
+
+Use the box launcher's widget mechanism to embed Copilot's status screen.
+This is what brings Copilot back automatically after the box reboots or wakes.
+
+## 7. Sanity-check
+
+Reboot the box. Within ~10 seconds the status dot on the Copilot screen should
+turn **green** (Connected). Then tap a tile in Pilot from your phone — YouTube
+Music should open and start playing within a few seconds.
+
+If anything fails, the Copilot status screen tells you which step:
+
+- Status stuck on amber/red → network/relay problem.
+- Command appears, `Last error: background launch blocked` → revisit step 3.
+- Command appears but nothing happens and no error → revisit step 3 anyway;
+  the `SecurityException` is not always thrown — silent failure is also possible.
+
+## Configuration before first build
+
+Both apps need the same ntfy topic. Before building:
+
+1. Generate the topic:
+   ```bash
+   echo "copilot-$(openssl rand -hex 16)"
+   ```
+2. Paste the same value into:
+   - `Pilot/app/src/main/java/be/doccle/pilot/config/Config.kt` → `NTFY_TOPIC`
+   - `Copilot/app/src/main/java/be/doccle/copilot/config/Config.kt` → `NTFY_TOPIC`
+3. Replace the three placeholder ids in `Pilot/.../catalog/Catalog.kt` with real
+   YouTube Music playlist ids (Share → Copy link → strip the `&si=…` tail).
