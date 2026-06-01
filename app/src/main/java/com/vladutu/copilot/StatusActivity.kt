@@ -12,12 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
 import com.vladutu.copilot.service.ListenerService
-import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.StatusScreen
-import kotlinx.coroutines.flow.MutableStateFlow
 
 class StatusActivity : ComponentActivity() {
 
@@ -34,8 +31,7 @@ class StatusActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface {
-                    val flow = remember { ListenerService.state() ?: MutableStateFlow(UiState()) }
-                    val state by flow.collectAsState()
+                    val state by ListenerService.state.collectAsState()
                     StatusScreen(state = state)
                 }
             }

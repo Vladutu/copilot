@@ -19,8 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -47,14 +45,8 @@ data class UiState(
 class ListenerService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val _state = MutableStateFlow(UiState())
 
     private var subscribeJob: Job? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        instance = this
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, buildNotification())
@@ -64,7 +56,6 @@ class ListenerService : Service() {
 
     override fun onDestroy() {
         scope.coroutineContext[Job]?.cancel()
-        instance = null
         super.onDestroy()
     }
 
@@ -78,11 +69,11 @@ class ListenerService : Service() {
         )
         val launcher = AppLauncher(applicationContext)
 
-        _state.value = _state.value.copy(conn = ConnState.Reconnecting)
+        state.value = state.value.copy(conn = ConnState.Reconnecting)
 
         subscriber.subscribe().collect { result ->
             // Any result coming through means the stream is alive.
-            _state.value = _state.value.copy(conn = ConnState.Connected)
+            state.value = state.value.copy(conn = ConnState.Connected)
 
             when (result) {
                 is ParseResult.Accepted -> {
@@ -117,11 +108,11 @@ class ListenerService : Service() {
             text = text,
             ok = ok,
         )
-        val newRecent = (listOf(event) + _state.value.recent).take(RECENT_EVENTS_MAX)
-        _state.value = _state.value.copy(
+        val newRecent = (listOf(event) + state.value.recent).take(RECENT_EVENTS_MAX)
+        state.value = state.value.copy(
             recent = newRecent,
             // Only update skew when we have a fresh observation; otherwise keep what we knew.
-            skewSec = skewSec ?: _state.value.skewSec,
+            skewSec = skewSec ?: state.value.skewSec,
         )
     }
 
@@ -145,10 +136,10 @@ class ListenerService : Service() {
         const val NOTIF_ID = 1
         const val RECENT_EVENTS_MAX = 5
 
-        // The service is effectively a singleton at runtime; the Activity reads state
-        // through this rather than a full bind/unbind (overkill for MVP).
-        @Volatile private var instance: ListenerService? = null
-
-        fun state(): StateFlow<UiState>? = instance?._state?.asStateFlow()
+        // Process-scoped so the Activity can bind to it before the service's onCreate runs.
+        // (A service-instance-scoped flow loses the race on cold start: Activity composes,
+        // captures null/fallback in remember, then service starts and writes to a flow
+        // nobody is observing.)
+        val state = MutableStateFlow(UiState())
     }
 }
