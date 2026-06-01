@@ -102,7 +102,7 @@ class MessageTest {
     @Test
     fun `rejects unknown cmd`() {
         val env = ntfyEnvelope(
-            """{"v":1,"ts":$now,"cmd":"waze","form":"playlist","id":"PLabc"}"""
+            """{"v":1,"ts":$now,"cmd":"bogus","form":"playlist","id":"PLabc"}"""
         )
         val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
         assertTrue(result is ParseResult.Rejected)
@@ -191,5 +191,54 @@ class MessageTest {
         val result = Message.parseEnvelope(env, nowSec = now, maxAgeSec = maxAge)
         assertTrue(result is ParseResult.Rejected)
         assertNotNull((result as ParseResult.Rejected).reason)
+    }
+
+    @Test
+    fun `accepts waze message with ul waze host`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze","url":"https://ul.waze.com/ul?ll=52.5,13.4&navigate=yes"}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+
+        assertTrue(result is ParseResult.Accepted)
+        val accepted = result as ParseResult.Accepted
+        assertEquals("waze", accepted.message.cmd)
+        assertEquals("https://ul.waze.com/ul?ll=52.5,13.4&navigate=yes", accepted.message.url)
+    }
+
+    @Test
+    fun `accepts waze message with waze com host`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze","url":"https://waze.com/ul?ll=1,2&navigate=yes"}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Accepted)
+    }
+
+    @Test
+    fun `rejects waze without url`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze"}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        assertTrue((result as ParseResult.Rejected).reason.contains("url"))
+    }
+
+    @Test
+    fun `rejects waze with blank url`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze","url":""}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+    }
+
+    @Test
+    fun `rejects waze with untrusted host`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze","url":"https://evil.example.com/foo"}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
+        val reason = (result as ParseResult.Rejected).reason
+        assertTrue("expected untrusted-host message, got: $reason", reason.contains("untrusted host"))
+    }
+
+    @Test
+    fun `rejects waze with http scheme`() {
+        val body = """{"v":1,"ts":$now,"cmd":"waze","url":"http://ul.waze.com/ul?ll=1,2"}"""
+        val result = Message.parseEnvelope(ntfyEnvelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(result is ParseResult.Rejected)
     }
 }
