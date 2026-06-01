@@ -1,4 +1,4 @@
-package be.doccle.copilot.config
+package com.vladutu.copilot.config
 
 object Config {
     const val NTFY_BASE: String = "https://ntfy.sh"

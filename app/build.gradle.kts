@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "be.doccle.copilot"
+    namespace = "com.vladutu.copilot"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "be.doccle.copilot"
+        applicationId = "com.vladutu.copilot"
         minSdk = 29
         targetSdk = 34
         versionCode = 1

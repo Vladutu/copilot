@@ -1,4 +1,4 @@
-package be.doccle.copilot
+package com.vladutu.copilot
 
 import android.Manifest
 import android.content.Intent
@@ -14,9 +14,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
-import be.doccle.copilot.service.ListenerService
-import be.doccle.copilot.service.UiState
-import be.doccle.copilot.ui.StatusScreen
+import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.StatusScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class StatusActivity : ComponentActivity() {

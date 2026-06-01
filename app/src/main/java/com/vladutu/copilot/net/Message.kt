@@ -1,4 +1,4 @@
-package be.doccle.copilot.net
+package com.vladutu.copilot.net
 
 import org.json.JSONException
 import org.json.JSONObject

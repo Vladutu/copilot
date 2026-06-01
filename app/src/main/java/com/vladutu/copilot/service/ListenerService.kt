@@ -1,4 +1,4 @@
-package be.doccle.copilot.service
+package com.vladutu.copilot.service
 
 import android.app.Notification
 import android.app.PendingIntent
@@ -7,13 +7,13 @@ import android.content.Intent
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import be.doccle.copilot.CopilotApp
-import be.doccle.copilot.R
-import be.doccle.copilot.StatusActivity
-import be.doccle.copilot.config.Config
-import be.doccle.copilot.launch.AppLauncher
-import be.doccle.copilot.net.Message
-import be.doccle.copilot.net.NtfySubscriber
+import com.vladutu.copilot.CopilotApp
+import com.vladutu.copilot.R
+import com.vladutu.copilot.StatusActivity
+import com.vladutu.copilot.config.Config
+import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.net.Message
+import com.vladutu.copilot.net.NtfySubscriber
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

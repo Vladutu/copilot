@@ -1,4 +1,4 @@
-package be.doccle.copilot
+package com.vladutu.copilot
 
 import android.app.Application
 import android.app.NotificationChannel

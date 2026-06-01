@@ -1,4 +1,4 @@
-package be.doccle.copilot.ui
+package com.vladutu.copilot.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,9 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import be.doccle.copilot.config.Config
-import be.doccle.copilot.service.ConnState
-import be.doccle.copilot.service.UiState
+import com.vladutu.copilot.config.Config
+import com.vladutu.copilot.service.ConnState
+import com.vladutu.copilot.service.UiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
