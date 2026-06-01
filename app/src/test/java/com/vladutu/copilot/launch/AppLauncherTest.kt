@@ -11,9 +11,9 @@ class AppLauncherTest {
         Message(v = 1, ts = 1L, cmd = "ytmusic", form = form, id = id)
 
     @Test
-    fun `buildLaunchUri for playlist form returns watch_list URL`() {
+    fun `buildLaunchUri for playlist form returns shuffled watch_list URL`() {
         val uri = AppLauncher.buildLaunchUri(msg(form = "playlist", id = "PLabc"))
-        assertEquals("https://music.youtube.com/watch?list=PLabc", uri)
+        assertEquals("https://music.youtube.com/watch?list=PLabc&shuffle=1", uri)
     }
 
     @Test

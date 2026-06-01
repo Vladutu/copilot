@@ -55,7 +55,7 @@ class AppLauncher(private val context: Context) {
          */
         fun buildLaunchUri(msg: Message): String? = when (msg.cmd) {
             "ytmusic" -> when (msg.form) {
-                "playlist" -> "https://music.youtube.com/watch?list=${msg.id}"
+                "playlist" -> "https://music.youtube.com/watch?list=${msg.id}&shuffle=1"
                 "song" -> "https://music.youtube.com/watch?v=${msg.id}"
                 else -> null
             }
