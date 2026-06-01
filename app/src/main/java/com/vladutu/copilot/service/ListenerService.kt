@@ -88,12 +88,17 @@ class ListenerService : Service() {
                 is ParseResult.Accepted -> {
                     val outcome = withContext(Dispatchers.Main) { launcher.launch(result.message) }
                     val ok = outcome is AppLauncher.Result.Ok
+                    val label = when (result.message.cmd) {
+                        "ytmusic" -> result.message.id
+                        "waze" -> "navigate"
+                        else -> result.message.cmd
+                    }
                     val text = when (outcome) {
                         AppLauncher.Result.Ok ->
-                            "▶ ${result.message.id} · launched"
+                            "▶ $label · launched"
                         is AppLauncher.Result.Failed -> {
                             Log.w(TAG, "launch failed: ${outcome.reason}")
-                            "✗ ${result.message.id} · ${outcome.reason}"
+                            "✗ $label · ${outcome.reason}"
                         }
                     }
                     appendRecent(text, ok = ok, skewSec = result.skewSec)
