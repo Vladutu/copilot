@@ -8,12 +8,14 @@ data class Message(
     val v: Int,
     val ts: Long,
     val cmd: String,
-    val form: String = "",
-    val id: String = "",
-    val url: String = "",
+    val url: String,
 ) {
     companion object {
-        private val VIDEO_ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
+        private const val SCHEMA_VERSION = 2
+
+        private val YT_MUSIC_ALLOWED_PREFIXES = listOf(
+            "https://music.youtube.com/",
+        )
         private val WAZE_ALLOWED_PREFIXES = listOf(
             "https://ul.waze.com/",
             "https://waze.com/",
@@ -33,7 +35,7 @@ data class Message(
             }
 
             val v = body.optInt("v", -1)
-            if (v != 1) return ParseResult.Rejected("unknown schema v=$v")
+            if (v != SCHEMA_VERSION) return ParseResult.Rejected("unknown schema v=$v")
 
             val ts = body.optLong("ts", -1)
             if (ts < 0) return ParseResult.Rejected("missing ts")
@@ -43,31 +45,19 @@ data class Message(
                 return ParseResult.Rejected("stale (${skew}s)", skew)
             }
 
-            return when (val cmd = body.optString("cmd")) {
-                "ytmusic" -> parseYtMusic(body, cmd, v, ts, skew)
-                "waze" -> parseWaze(body, cmd, v, ts, skew)
-                else -> ParseResult.Rejected("unknown cmd=$cmd", skew)
+            val cmd = body.optString("cmd")
+            val allowedPrefixes = when (cmd) {
+                "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
+                "waze" -> WAZE_ALLOWED_PREFIXES
+                else -> return ParseResult.Rejected("unknown cmd=$cmd", skew)
             }
-        }
 
-        private fun parseYtMusic(body: JSONObject, cmd: String, v: Int, ts: Long, skew: Long): ParseResult {
-            val form = body.optString("form")
-            if (form != "playlist" && form != "song") return ParseResult.Rejected("unknown form=$form", skew)
-
-            val id = body.optString("id")
-            if (id.isBlank()) return ParseResult.Rejected("blank id", skew)
-            if (form == "song" && !VIDEO_ID_REGEX.matches(id)) {
-                return ParseResult.Rejected("invalid id for form=song", skew)
-            }
-            return ParseResult.Accepted(Message(v = v, ts = ts, cmd = cmd, form = form, id = id), skew)
-        }
-
-        private fun parseWaze(body: JSONObject, cmd: String, v: Int, ts: Long, skew: Long): ParseResult {
             val url = body.optString("url")
             if (url.isBlank()) return ParseResult.Rejected("missing url", skew)
-            if (WAZE_ALLOWED_PREFIXES.none { url.startsWith(it) }) {
+            if (allowedPrefixes.none { url.startsWith(it) }) {
                 return ParseResult.Rejected("untrusted host", skew)
             }
+
             return ParseResult.Accepted(Message(v = v, ts = ts, cmd = cmd, url = url), skew)
         }
     }

@@ -40,21 +40,25 @@ class NtfySubscriberTest {
         maxAgeSec = maxAge,
     )
 
+    private fun ytPayload(ts: Long, list: String): String =
+        """{"v":2,"ts":$ts,"cmd":"ytmusic","url":"https://music.youtube.com/watch?list=$list&shuffle=1"}"""
+
     @Test
     fun `emits accepted result for a valid message`() = runTest {
-        val payload = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLone"}"""
-        server.enqueue(MockResponse().setBody(envelope(payload)))
+        server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLone"))))
 
         val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
         assertTrue(result is ParseResult.Accepted)
-        assertEquals("PLone", (result as ParseResult.Accepted).message.id)
+        assertEquals(
+            "https://music.youtube.com/watch?list=PLone&shuffle=1",
+            (result as ParseResult.Accepted).message.url,
+        )
     }
 
     @Test
     fun `emits rejected result for a stale message`() = runTest {
         val staleTs = now - maxAge - 100
-        val payload = """{"v":1,"ts":$staleTs,"cmd":"ytmusic","form":"playlist","id":"PLstale"}"""
-        server.enqueue(MockResponse().setBody(envelope(payload)))
+        server.enqueue(MockResponse().setBody(envelope(ytPayload(staleTs, "PLstale"))))
 
         val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
         assertTrue(result is ParseResult.Rejected)
@@ -64,28 +68,34 @@ class NtfySubscriberTest {
     @Test
     fun `filters out keepalive lines, only emits real results`() = runTest {
         val keepalive = """{"id":"x","time":$now,"event":"keepalive","topic":"t"}"""
-        val payload = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLgood"}"""
-        server.enqueue(MockResponse().setBody(keepalive + "\n" + envelope(payload)))
+        server.enqueue(MockResponse().setBody(keepalive + "\n" + envelope(ytPayload(now, "PLgood"))))
 
         val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
         assertTrue(result is ParseResult.Accepted)
-        assertEquals("PLgood", (result as ParseResult.Accepted).message.id)
+        assertEquals(
+            "https://music.youtube.com/watch?list=PLgood&shuffle=1",
+            (result as ParseResult.Accepted).message.url,
+        )
     }
 
     @Test
     fun `reconnects after the server closes the stream`() = runTest {
-        val first = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLfirst"}"""
-        val second = """{"v":1,"ts":$now,"cmd":"ytmusic","form":"playlist","id":"PLsecond"}"""
-        server.enqueue(MockResponse().setBody(envelope(first)))
-        server.enqueue(MockResponse().setBody(envelope(second)))
+        server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLfirst"))))
+        server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLsecond"))))
 
-        val ids = withTimeout(5000) {
+        val urls = withTimeout(5000) {
             makeSubscriber().subscribe()
                 .take(2)
                 .toList()
-                .map { (it as ParseResult.Accepted).message.id }
+                .map { (it as ParseResult.Accepted).message.url }
         }
-        assertEquals(listOf("PLfirst", "PLsecond"), ids)
+        assertEquals(
+            listOf(
+                "https://music.youtube.com/watch?list=PLfirst&shuffle=1",
+                "https://music.youtube.com/watch?list=PLsecond&shuffle=1",
+            ),
+            urls,
+        )
     }
 
     private fun envelope(payload: String): String =

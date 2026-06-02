@@ -15,19 +15,15 @@ class AppLauncher(private val context: Context) {
     }
 
     fun launch(msg: Message): Result {
-        val (uri, targetPkg, missingMsg) = when (msg.cmd) {
-            "ytmusic" -> {
-                val u = buildLaunchUri(msg) ?: return Result.Failed("unknown form: ${msg.form}")
-                Triple(u, YT_MUSIC_PKG, "YouTube Music not installed")
-            }
-            "waze" -> {
-                val u = buildLaunchUri(msg) ?: return Result.Failed("missing waze url")
-                Triple(u, WAZE_PKG, "Waze not installed")
-            }
-            else -> return Result.Failed("unknown command: ${msg.cmd}")
+        val targetPkg = targetPackageFor(msg.cmd)
+            ?: return Result.Failed("unknown command: ${msg.cmd}")
+        val missingMsg = when (msg.cmd) {
+            "ytmusic" -> "YouTube Music not installed"
+            "waze" -> "Waze not installed"
+            else -> "target app not installed"
         }
 
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(launchUri(msg))).apply {
             setPackage(targetPkg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -49,18 +45,12 @@ class AppLauncher(private val context: Context) {
         const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
         const val WAZE_PKG = "com.waze"
 
-        /**
-         * Returns the deep-link URI for [msg]. Returns null when the message is unusable
-         * (unknown form for ytmusic, blank url for waze).
-         */
-        fun buildLaunchUri(msg: Message): String? = when (msg.cmd) {
-            "ytmusic" -> when (msg.form) {
-                "playlist" -> "https://music.youtube.com/watch?list=${msg.id}&shuffle=1"
-                "song" -> "https://music.youtube.com/watch?v=${msg.id}"
-                else -> null
-            }
-            "waze" -> msg.url.takeIf { it.isNotBlank() }
+        fun targetPackageFor(cmd: String): String? = when (cmd) {
+            "ytmusic" -> YT_MUSIC_PKG
+            "waze" -> WAZE_PKG
             else -> null
         }
+
+        fun launchUri(msg: Message): String = msg.url
     }
 }

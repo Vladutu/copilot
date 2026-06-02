@@ -80,7 +80,7 @@ class ListenerService : Service() {
                     val outcome = withContext(Dispatchers.Main) { launcher.launch(result.message) }
                     val ok = outcome is AppLauncher.Result.Ok
                     val label = when (result.message.cmd) {
-                        "ytmusic" -> result.message.id
+                        "ytmusic" -> "play"
                         "waze" -> "navigate"
                         else -> result.message.cmd
                     }

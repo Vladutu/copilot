@@ -7,40 +7,33 @@ import org.junit.Test
 
 class AppLauncherTest {
 
-    private fun msg(form: String, id: String) =
-        Message(v = 1, ts = 1L, cmd = "ytmusic", form = form, id = id)
+    private fun msg(cmd: String, url: String) =
+        Message(v = 2, ts = 1L, cmd = cmd, url = url)
 
     @Test
-    fun `buildLaunchUri for playlist form returns shuffled watch_list URL`() {
-        val uri = AppLauncher.buildLaunchUri(msg(form = "playlist", id = "PLabc"))
-        assertEquals("https://music.youtube.com/watch?list=PLabc&shuffle=1", uri)
+    fun `targetPackageFor ytmusic returns YouTube Music package`() {
+        assertEquals(AppLauncher.YT_MUSIC_PKG, AppLauncher.targetPackageFor("ytmusic"))
     }
 
     @Test
-    fun `buildLaunchUri for song form returns watch_v URL`() {
-        val uri = AppLauncher.buildLaunchUri(msg(form = "song", id = "dQw4w9WgXcQ"))
-        assertEquals("https://music.youtube.com/watch?v=dQw4w9WgXcQ", uri)
+    fun `targetPackageFor waze returns Waze package`() {
+        assertEquals(AppLauncher.WAZE_PKG, AppLauncher.targetPackageFor("waze"))
     }
 
     @Test
-    fun `buildLaunchUri for unknown form returns null`() {
-        assertNull(AppLauncher.buildLaunchUri(msg(form = "album", id = "x")))
+    fun `targetPackageFor unknown cmd returns null`() {
+        assertNull(AppLauncher.targetPackageFor("bogus"))
     }
 
     @Test
-    fun `buildLaunchUri returns url verbatim for waze`() {
-        val msg = Message(
-            v = 1,
-            ts = 0L,
-            cmd = "waze",
-            url = "https://ul.waze.com/ul?ll=52.5,13.4&navigate=yes",
-        )
-        assertEquals("https://ul.waze.com/ul?ll=52.5,13.4&navigate=yes", AppLauncher.buildLaunchUri(msg))
+    fun `launch uri for ytmusic is the message url verbatim`() {
+        val url = "https://music.youtube.com/watch?list=PLabc&shuffle=1"
+        assertEquals(url, AppLauncher.launchUri(msg(cmd = "ytmusic", url = url)))
     }
 
     @Test
-    fun `buildLaunchUri returns null for waze with blank url`() {
-        val msg = Message(v = 1, ts = 0L, cmd = "waze", url = "")
-        assertNull(AppLauncher.buildLaunchUri(msg))
+    fun `launch uri for waze is the message url verbatim`() {
+        val url = "https://ul.waze.com/ul?ll=52.5,13.4&navigate=yes"
+        assertEquals(url, AppLauncher.launchUri(msg(cmd = "waze", url = url)))
     }
 }
