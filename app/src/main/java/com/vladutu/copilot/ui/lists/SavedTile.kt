@@ -6,7 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,9 +56,9 @@ fun SavedTile(
         modifier = modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress),
         shape = RoundedCornerShape(16.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
             Box(
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
                 val bm = bitmap
@@ -67,24 +67,25 @@ fun SavedTile(
                         bitmap = bm,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     Image(
                         painter = painterResource(
-                            id = if (item.form == Form.DESTINATION) R.drawable.ic_map_pin else R.mipmap.ic_launcher_round
+                            id = if (item.form == Form.DESTINATION) R.drawable.ic_map_pin else R.drawable.ic_music_note
                         ),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
             Text(
                 text = item.title ?: "Untitled · ${item.id.take(8)}",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 6.dp),
             )
         }
     }

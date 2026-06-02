@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +31,10 @@ import kotlin.math.abs
 @Composable
 fun StatusScreen(state: UiState, onBack: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         BackHomeButton(onBack)
@@ -62,8 +67,6 @@ fun StatusScreen(state: UiState, onBack: () -> Unit) {
                 }
             }
         }
-
-        Box(Modifier.weight(1f, fill = true))
 
         Text(
             text = "topic: ${Config.NTFY_TOPIC.take(16)}…",
