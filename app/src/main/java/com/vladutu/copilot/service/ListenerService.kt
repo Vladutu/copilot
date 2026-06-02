@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.vladutu.copilot.CopilotApp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.MainActivity
+import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.history.from
@@ -104,6 +105,10 @@ class ListenerService : Service() {
                         msg.imageUrl?.let { imgUrl ->
                             scope.launch { artwork.download(imgUrl, item.form, item.id) }
                         }
+                        // Always request the bubble so it appears once the target app is in front.
+                        // If MainActivity is currently resumed, BubbleController suppresses the start
+                        // and re-fires it from onPause() when launching Music/Waze backgrounds us.
+                        BubbleController.requestShow(applicationContext)
                     }
                     appendRecent(text, ok = ok, skewSec = result.skewSec)
                 }

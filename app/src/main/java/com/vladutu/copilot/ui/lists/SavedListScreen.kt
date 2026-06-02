@@ -49,7 +49,10 @@ fun SavedListScreen(
         Form.DESTINATION -> stringResource(R.string.empty_destinations)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BackHomeButton(onBack)
             Text(text = title, style = MaterialTheme.typography.headlineMedium)
