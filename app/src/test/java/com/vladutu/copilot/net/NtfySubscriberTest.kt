@@ -41,7 +41,7 @@ class NtfySubscriberTest {
     )
 
     private fun ytPayload(ts: Long, list: String): String =
-        """{"v":2,"ts":$ts,"cmd":"ytmusic","url":"https://music.youtube.com/watch?list=$list&shuffle=1"}"""
+        """{"v":3,"ts":$ts,"cmd":"ytmusic","form":"playlist","url":"https://music.youtube.com/watch?list=$list&shuffle=1"}"""
 
     @Test
     fun `emits accepted result for a valid message`() = runTest {

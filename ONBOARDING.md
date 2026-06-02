@@ -61,3 +61,33 @@ Both apps need the same ntfy topic. Before building:
    - `Copilot/app/src/main/java/be/doccle/copilot/config/Config.kt` → `NTFY_TOPIC`
 3. Replace the three placeholder ids in `Pilot/.../catalog/Catalog.kt` with real
    YouTube Music playlist ids (Share → Copy link → strip the `&si=…` tail).
+
+## v3 schema (this build)
+
+Pilot and Copilot now exchange ntfy envelopes with schema `v: 3`. Both apps must be
+on the same commit/build. v2 messages are rejected by Copilot with
+`unknown schema v=2` in the status screen's recent-events list.
+
+## Two persistent notifications
+
+After this build you will see **two** ongoing notifications in the shade:
+
+- **Copilot listening** — the ntfy subscriber (foreground service, `dataSync`).
+- **Copilot** (bubble) — the overlay controller that brings the carbox UI back to
+  the front after you leave for Waze or YouTube Music (foreground service,
+  `specialUse`).
+
+Both are expected. Dismissing them stops the service.
+
+## Revert
+
+If something breaks on the box:
+
+```bash
+cd /home/geo/projects/Copilot && git reset --hard HEAD~1
+cd /home/geo/projects/Pilot && git reset --hard HEAD~1
+```
+
+Rebuild and sideload both APKs. Both repos revert in lockstep so v2 ↔ v2 interop
+is restored.
+

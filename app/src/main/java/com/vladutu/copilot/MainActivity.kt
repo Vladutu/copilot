@@ -1,0 +1,140 @@
+package com.vladutu.copilot
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.vladutu.copilot.bubble.BubbleController
+import com.vladutu.copilot.history.Form
+import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.ui.home.HomeScreen
+import com.vladutu.copilot.ui.lists.SavedListScreen
+import com.vladutu.copilot.ui.permissions.PermissionGate
+import com.vladutu.copilot.ui.status.StatusScreen
+import com.vladutu.copilot.ui.theme.CopilotDriveTheme
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+
+    private var showHomeTrigger by mutableIntStateOf(0)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        startListenerService()
+        handleIntent(intent)
+        setContent {
+            CopilotDriveTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    PermissionGate {
+                        CopilotNav(::leaveToOtherApp, showHomeTrigger)
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_SHOW_HOME, false) == true) {
+            showHomeTrigger++
+        }
+    }
+
+    private fun startListenerService() {
+        startForegroundService(Intent(this, ListenerService::class.java))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        BubbleController.onActivityResumed(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        BubbleController.onActivityPaused(this)
+    }
+
+    private fun leaveToOtherApp() {
+        BubbleController.requestShow(this)
+        moveTaskToBack(true)
+    }
+
+    companion object {
+        const val EXTRA_SHOW_HOME = "show_home"
+    }
+}
+
+@Composable
+private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
+    val nav = rememberNavController()
+    val context = LocalContext.current
+    val app = context.applicationContext as CopilotApp
+    val launcher = remember { AppLauncher(context) }
+
+    LaunchedEffect(showHomeTrigger) {
+        if (showHomeTrigger > 0) nav.popBackStack(route = "home", inclusive = false)
+    }
+
+    NavHost(navController = nav, startDestination = "home") {
+        composable("home") {
+            val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            HomeScreen(
+                state = uiState,
+                onOpenWaze = {
+                    if (launcher.openWazeApp() is AppLauncher.Result.Ok) onLeftToOtherApp()
+                },
+                onOpenPlaylists = { nav.navigate("list/playlist") },
+                onOpenSongs = { nav.navigate("list/song") },
+                onOpenDestinations = { nav.navigate("list/destination") },
+                onOpenStatus = { nav.navigate("status") },
+            )
+        }
+
+        composable("list/{form}") { entry ->
+            val formArg = entry.arguments?.getString("form") ?: return@composable
+            val form = Form.fromWire(formArg) ?: return@composable
+            val items by app.locator.historyRepository.itemsFor(form)
+                .collectAsStateWithLifecycle(emptyList())
+            SavedListScreen(
+                items = items,
+                form = form,
+                artworkCache = app.locator.artworkCache,
+                onTap = { item ->
+                    if (launcher.replay(item) is AppLauncher.Result.Ok) onLeftToOtherApp()
+                },
+                onDelete = { item ->
+                    app.applicationScope.launch {
+                        app.locator.historyRepository.delete(item.form, item.id)
+                    }
+                },
+                onBack = { nav.popBackStack() },
+            )
+        }
+
+        composable("status") {
+            val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            StatusScreen(state = uiState, onBack = { nav.popBackStack() })
+        }
+    }
+}

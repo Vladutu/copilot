@@ -9,8 +9,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.vladutu.copilot.CopilotApp
 import com.vladutu.copilot.R
-import com.vladutu.copilot.StatusActivity
+import com.vladutu.copilot.MainActivity
 import com.vladutu.copilot.config.Config
+import com.vladutu.copilot.history.SavedItem
+import com.vladutu.copilot.history.from
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.net.NtfySubscriber
 import com.vladutu.copilot.net.ParseResult
@@ -68,6 +70,9 @@ class ListenerService : Service() {
             maxAgeSec = Config.MAX_MESSAGE_AGE_SEC,
         )
         val launcher = AppLauncher(applicationContext)
+        val app = applicationContext as CopilotApp
+        val history = app.locator.historyRepository
+        val artwork = app.locator.artworkCache
 
         state.value = state.value.copy(conn = ConnState.Reconnecting)
 
@@ -77,19 +82,27 @@ class ListenerService : Service() {
 
             when (result) {
                 is ParseResult.Accepted -> {
-                    val outcome = withContext(Dispatchers.Main) { launcher.launch(result.message) }
+                    val msg = result.message
+                    val outcome = withContext(Dispatchers.Main) { launcher.launch(msg) }
                     val ok = outcome is AppLauncher.Result.Ok
-                    val label = when (result.message.cmd) {
+                    val label = when (msg.cmd) {
                         "ytmusic" -> "play"
                         "waze" -> "navigate"
-                        else -> result.message.cmd
+                        else -> msg.cmd
                     }
                     val text = when (outcome) {
-                        AppLauncher.Result.Ok ->
-                            "▶ $label · launched"
+                        AppLauncher.Result.Ok -> "▶ $label · launched"
                         is AppLauncher.Result.Failed -> {
                             Log.w(TAG, "launch failed: ${outcome.reason}")
                             "✗ $label · ${outcome.reason}"
+                        }
+                    }
+                    if (ok) {
+                        val savedAt = System.currentTimeMillis() / 1000L
+                        val item = SavedItem.from(msg, savedAt)
+                        history.save(item)
+                        msg.imageUrl?.let { imgUrl ->
+                            scope.launch { artwork.download(imgUrl, item.form, item.id) }
                         }
                     }
                     appendRecent(text, ok = ok, skewSec = result.skewSec)
@@ -119,7 +132,7 @@ class ListenerService : Service() {
     private fun buildNotification(): Notification {
         val openApp = PendingIntent.getActivity(
             this, 0,
-            Intent(this, StatusActivity::class.java),
+            Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CopilotApp.CHANNEL_ID)

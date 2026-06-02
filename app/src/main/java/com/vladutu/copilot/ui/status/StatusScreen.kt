@@ -1,4 +1,4 @@
-package com.vladutu.copilot.ui
+package com.vladutu.copilot.ui.status
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
+import com.vladutu.copilot.ui.BackHomeButton
 import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
 import java.text.SimpleDateFormat
@@ -26,11 +27,12 @@ import java.util.Locale
 import kotlin.math.abs
 
 @Composable
-fun StatusScreen(state: UiState) {
+fun StatusScreen(state: UiState, onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        BackHomeButton(onBack)
         // Connection state
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(20.dp).background(state.conn.color(), CircleShape))

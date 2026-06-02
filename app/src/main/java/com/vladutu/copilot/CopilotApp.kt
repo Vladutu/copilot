@@ -3,8 +3,14 @@ package com.vladutu.copilot
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import com.vladutu.copilot.di.ServiceLocator
 
 class CopilotApp : Application() {
+
+    val locator: ServiceLocator by lazy { ServiceLocator(applicationContext) }
+
+    val applicationScope: kotlinx.coroutines.CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()

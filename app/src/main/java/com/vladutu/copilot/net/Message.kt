@@ -1,5 +1,6 @@
 package com.vladutu.copilot.net
 
+import com.vladutu.copilot.history.Form
 import org.json.JSONException
 import org.json.JSONObject
 import kotlin.math.abs
@@ -8,10 +9,13 @@ data class Message(
     val v: Int,
     val ts: Long,
     val cmd: String,
+    val form: Form,
     val url: String,
+    val title: String?,
+    val imageUrl: String?,
 ) {
     companion object {
-        private const val SCHEMA_VERSION = 2
+        private const val SCHEMA_VERSION = 3
 
         private val YT_MUSIC_ALLOWED_PREFIXES = listOf(
             "https://music.youtube.com/",
@@ -40,10 +44,7 @@ data class Message(
             val ts = body.optLong("ts", -1)
             if (ts < 0) return ParseResult.Rejected("missing ts")
             val skew = nowSec - ts
-
-            if (abs(skew) > maxAgeSec) {
-                return ParseResult.Rejected("stale (${skew}s)", skew)
-            }
+            if (abs(skew) > maxAgeSec) return ParseResult.Rejected("stale (${skew}s)", skew)
 
             val cmd = body.optString("cmd")
             val allowedPrefixes = when (cmd) {
@@ -52,13 +53,29 @@ data class Message(
                 else -> return ParseResult.Rejected("unknown cmd=$cmd", skew)
             }
 
+            val form = Form.fromWire(body.optString("form").takeIf { it.isNotBlank() })
+                ?: return ParseResult.Rejected("unknown form", skew)
+
+            val cmdFormConsistent = when (cmd) {
+                "ytmusic" -> form == Form.PLAYLIST || form == Form.SONG
+                "waze" -> form == Form.DESTINATION
+                else -> false
+            }
+            if (!cmdFormConsistent) return ParseResult.Rejected("cmd/form mismatch", skew)
+
             val url = body.optString("url")
             if (url.isBlank()) return ParseResult.Rejected("missing url", skew)
             if (allowedPrefixes.none { url.startsWith(it) }) {
                 return ParseResult.Rejected("untrusted host", skew)
             }
 
-            return ParseResult.Accepted(Message(v = v, ts = ts, cmd = cmd, url = url), skew)
+            val title = body.optString("title").takeIf { it.isNotBlank() }
+            val imageUrl = body.optString("imageUrl").takeIf { it.isNotBlank() }
+
+            return ParseResult.Accepted(
+                Message(v = v, ts = ts, cmd = cmd, form = form, url = url, title = title, imageUrl = imageUrl),
+                skew,
+            )
         }
     }
 }
