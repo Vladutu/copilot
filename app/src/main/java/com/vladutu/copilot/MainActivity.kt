@@ -2,6 +2,7 @@ package com.vladutu.copilot
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,6 +76,27 @@ class MainActivity : ComponentActivity() {
         BubbleController.onActivityPaused(this)
     }
 
+    // The BMW iDrive knob arrives via the carbox's CarPlay bridge as one set of
+    // events from device "gaei" (src=0x301). The system then re-injects a
+    // second, synthetic copy from a nameless device (src=0x101) for
+    // DPAD_CENTER / BACK / BUTTON_1 — without filtering, every knob press and
+    // every back press would fire twice. Drop the synthetic copy.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isSyntheticDuplicate(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun isSyntheticDuplicate(event: KeyEvent): Boolean {
+        val hasNamedDevice = !event.device?.name.isNullOrEmpty()
+        if (hasNamedDevice) return false
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_CENTER,
+            KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_BUTTON_1 -> true
+            else -> false
+        }
+    }
+
     private fun leaveToOtherApp() {
         BubbleController.requestShow(this)
         moveTaskToBack(true)
@@ -108,6 +130,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
                 onOpenSongs = { nav.navigate("list/song") },
                 onOpenDestinations = { nav.navigate("list/destination") },
                 onOpenStatus = { nav.navigate("status") },
+                onBackFromHome = onLeftToOtherApp,
             )
         }
 
