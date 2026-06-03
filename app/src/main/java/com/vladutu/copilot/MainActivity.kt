@@ -24,6 +24,7 @@ import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.ui.diagnostics.LogsScreen
 import com.vladutu.copilot.ui.home.HomeScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
@@ -162,7 +163,15 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
 
         composable("status") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
-            StatusScreen(state = uiState, onBack = { nav.popBackStack() })
+            StatusScreen(
+                state = uiState,
+                onBack = { nav.popBackStack() },
+                onOpenLogs = { nav.navigate("logs") },
+            )
+        }
+
+        composable("logs") {
+            LogsScreen(onBack = { nav.popBackStack() })
         }
     }
 }

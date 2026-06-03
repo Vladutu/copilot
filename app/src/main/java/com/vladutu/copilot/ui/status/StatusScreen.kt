@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,7 +30,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 @Composable
-fun StatusScreen(state: UiState, onBack: () -> Unit) {
+fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,6 +74,8 @@ fun StatusScreen(state: UiState, onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray,
         )
+
+        OutlinedButton(onClick = onOpenLogs) { Text("Diagnostic log") }
     }
 }
 

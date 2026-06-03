@@ -19,4 +19,6 @@
     <string name="overlay_permission_title">Allow Copilot to draw over other apps</string>
     <string name="overlay_permission_body">Copilot shows a small floating button over Waze and YouTube Music so you can return with one tap.</string>
     <string name="grant">Grant</string>
+    <string name="back_grabber_label">Copilot Back-Grabber</string>
+    <string name="back_grabber_description">Long-press the BMW back button to bring Copilot to the front while the Copilot bubble is showing. Short BACK presses still work normally for Waze and YouTube Music.</string>
 </resources>

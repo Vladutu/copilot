@@ -7,6 +7,7 @@ import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
 import com.vladutu.copilot.di.ServiceLocator
+import com.vladutu.copilot.diagnostics.DiagnosticLog
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.text.SimpleDateFormat
@@ -22,6 +23,8 @@ class CopilotApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DiagnosticLog.init(this)
+        DiagnosticLog.i("App", "CopilotApp.onCreate (pid=${android.os.Process.myPid()})")
         installCrashHandler()
         val mgr = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
