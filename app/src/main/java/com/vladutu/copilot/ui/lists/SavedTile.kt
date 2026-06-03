@@ -1,9 +1,13 @@
 package com.vladutu.copilot.ui.lists
 
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,9 +56,17 @@ fun SavedTile(
             bitmap = bmp?.asImageBitmap()
         }
     }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
     Card(
-        modifier = modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress),
+        modifier = modifier.combinedClickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            onClick = onTap,
+            onLongClick = onLongPress,
+        ),
         shape = RoundedCornerShape(16.dp),
+        border = if (isFocused) BorderStroke(4.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
             Box(
