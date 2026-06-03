@@ -121,7 +121,12 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
                 form = form,
                 artworkCache = app.locator.artworkCache,
                 onTap = { item ->
-                    if (launcher.replay(item) is AppLauncher.Result.Ok) onLeftToOtherApp()
+                    if (launcher.replay(item) is AppLauncher.Result.Ok) {
+                        app.applicationScope.launch {
+                            app.locator.historyRepository.touch(item.form, item.id)
+                        }
+                        onLeftToOtherApp()
+                    }
                 },
                 onDelete = { item ->
                     app.applicationScope.launch {

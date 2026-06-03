@@ -20,6 +20,7 @@ class HistoryRepositoryTest {
     private lateinit var context: Context
     private lateinit var repo: HistoryRepository
     private val storeName = "test_history_${System.nanoTime()}"
+    private var fakeNow: Long = 0L
 
     @Before fun setUp() {
         context = ApplicationProvider.getApplicationContext()
@@ -27,7 +28,7 @@ class HistoryRepositoryTest {
             produceFile = { context.preferencesDataStoreFile(storeName) }
         )
         val store = HistoryStore(ds)
-        repo = HistoryRepository(store)
+        repo = HistoryRepository(store, clock = { fakeNow })
     }
 
     @After fun tearDown() {
@@ -44,13 +45,49 @@ class HistoryRepositoryTest {
         assertEquals("a", list[0].id)
     }
 
-    @Test fun `duplicate save is no-op and keeps original savedAt`() = runTest {
+    @Test fun `re-saving an item refreshes savedAt and meta so it promotes to the top`() = runTest {
         repo.save(item(Form.PLAYLIST, "a", 100L, "first"))
+        repo.save(item(Form.PLAYLIST, "b", 150L, "b"))
         repo.save(item(Form.PLAYLIST, "a", 200L, "second"))
         val list = repo.itemsFor(Form.PLAYLIST).first()
-        assertEquals(1, list.size)
-        assertEquals(100L, list[0].savedAt)
-        assertEquals("first", list[0].title)
+        assertEquals(2, list.size)
+        assertEquals(listOf("a", "b"), list.map { it.id })
+        assertEquals(200L, list[0].savedAt)
+        assertEquals("second", list[0].title)
+    }
+
+    @Test fun `touch bumps savedAt and re-sorts to the top`() = runTest {
+        repo.save(item(Form.PLAYLIST, "old", 100L))
+        repo.save(item(Form.PLAYLIST, "mid", 150L))
+        repo.save(item(Form.PLAYLIST, "new", 200L))
+
+        fakeNow = 500L
+        repo.touch(Form.PLAYLIST, "old")
+
+        val list = repo.itemsFor(Form.PLAYLIST).first()
+        assertEquals(listOf("old", "new", "mid"), list.map { it.id })
+        assertEquals(500L, list[0].savedAt)
+    }
+
+    @Test fun `touch on missing entry or wrong form is a no-op`() = runTest {
+        repo.save(item(Form.PLAYLIST, "a", 100L))
+        fakeNow = 500L
+        repo.touch(Form.SONG, "a")
+        repo.touch(Form.PLAYLIST, "missing")
+
+        val e = repo.itemsFor(Form.PLAYLIST).first().single()
+        assertEquals(100L, e.savedAt)
+    }
+
+    @Test fun `touch only affects the matching form`() = runTest {
+        repo.save(item(Form.PLAYLIST, "x", 100L))
+        repo.save(item(Form.SONG, "x", 200L))
+
+        fakeNow = 500L
+        repo.touch(Form.PLAYLIST, "x")
+
+        assertEquals(500L, repo.itemsFor(Form.PLAYLIST).first().single().savedAt)
+        assertEquals(200L, repo.itemsFor(Form.SONG).first().single().savedAt)
     }
 
     @Test fun `items are sorted newest first`() = runTest {

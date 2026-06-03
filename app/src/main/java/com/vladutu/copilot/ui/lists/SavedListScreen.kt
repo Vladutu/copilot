@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,12 @@ fun SavedListScreen(
             val pageSize = 6
             val pageCount = (items.size + pageSize - 1) / pageSize
             val pagerState = rememberPagerState(pageCount = { pageCount })
+
+            // When the top item changes (manual tap, or Pilot event arriving while this screen
+            // is open) the user should land back on page 0 to see the freshly promoted item.
+            LaunchedEffect(items.firstOrNull()?.id) {
+                pagerState.animateScrollToPage(0)
+            }
 
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
                 val start = page * pageSize
