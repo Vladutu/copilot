@@ -25,6 +25,12 @@ data class Message(
             "https://waze.com/",
             "https://www.waze.com/",
         )
+        private val MAPS_ALLOWED_PREFIXES = listOf(
+            "https://www.google.com/maps",
+            "https://maps.google.com/",
+            "https://maps.app.goo.gl/",
+            "https://goo.gl/maps/",
+        )
 
         fun parseEnvelope(line: String, nowSec: Long, maxAgeSec: Long): ParseResult {
             val envelope = try { JSONObject(line) } catch (e: JSONException) {
@@ -50,6 +56,7 @@ data class Message(
             val allowedPrefixes = when (cmd) {
                 "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
                 "waze" -> WAZE_ALLOWED_PREFIXES
+                "maps" -> MAPS_ALLOWED_PREFIXES
                 else -> return ParseResult.Rejected("unknown cmd=$cmd", skew)
             }
 
@@ -58,7 +65,7 @@ data class Message(
 
             val cmdFormConsistent = when (cmd) {
                 "ytmusic" -> form == Form.PLAYLIST || form == Form.SONG
-                "waze" -> form == Form.DESTINATION
+                "waze", "maps" -> form == Form.DESTINATION
                 else -> false
             }
             if (!cmdFormConsistent) return ParseResult.Rejected("cmd/form mismatch", skew)

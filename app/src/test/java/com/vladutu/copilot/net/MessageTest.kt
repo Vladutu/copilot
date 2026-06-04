@@ -79,4 +79,33 @@ class MessageTest {
         assertTrue(res is ParseResult.Rejected)
         assertTrue((res as ParseResult.Rejected).reason.contains("stale"))
     }
+
+    @Test fun `accepts v3 with cmd=maps and Google Maps URL`() {
+        val body = """{"v":3,"ts":$now,"cmd":"maps","form":"destination","url":"https://www.google.com/maps/place/Brandenburg+Gate/@52.5,13.4,17z/"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+        val msg = (res as ParseResult.Accepted).message
+        assertEquals("maps", msg.cmd)
+        assertEquals(Form.DESTINATION, msg.form)
+    }
+
+    @Test fun `accepts maps cmd with maps_app_goo_gl short URL`() {
+        val body = """{"v":3,"ts":$now,"cmd":"maps","form":"destination","url":"https://maps.app.goo.gl/abc123"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+    }
+
+    @Test fun `rejects maps cmd with untrusted host`() {
+        val body = """{"v":3,"ts":$now,"cmd":"maps","form":"destination","url":"https://evil.example/place/x"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("untrusted host", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects maps cmd with non-destination form`() {
+        val body = """{"v":3,"ts":$now,"cmd":"maps","form":"playlist","url":"https://www.google.com/maps/place/X"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
 }
