@@ -92,3 +92,12 @@ sealed class ParseResult {
     data class Rejected(val reason: String, val skewSec: Long? = null) : ParseResult()
     data class Accepted(val message: Message, val skewSec: Long) : ParseResult()
 }
+
+/**
+ * Whether this message should be persisted to Copilot's history list after a
+ * successful launch. The "maps" cmd is a one-off launch override for a
+ * destination that already exists in history (as a Waze entry, sha1-keyed on
+ * the Waze URL); saving a second row keyed on the Maps URL would look like a
+ * duplicate entry for the same physical place.
+ */
+fun Message.savesToHistory(): Boolean = cmd != "maps"

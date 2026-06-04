@@ -17,6 +17,7 @@ import com.vladutu.copilot.history.from
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.net.NtfySubscriber
 import com.vladutu.copilot.net.ParseResult
+import com.vladutu.copilot.net.savesToHistory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -88,7 +89,7 @@ class ListenerService : Service() {
                     val ok = outcome is AppLauncher.Result.Ok
                     val label = when (msg.cmd) {
                         "ytmusic" -> "play"
-                        "waze" -> "navigate"
+                        "waze", "maps" -> "navigate"
                         else -> msg.cmd
                     }
                     val text = when (outcome) {
@@ -101,9 +102,11 @@ class ListenerService : Service() {
                     if (ok) {
                         val savedAt = System.currentTimeMillis() / 1000L
                         val item = SavedItem.from(msg, savedAt)
-                        history.save(item)
-                        msg.imageUrl?.let { imgUrl ->
-                            scope.launch { artwork.download(imgUrl, item.form, item.id) }
+                        if (msg.savesToHistory()) {
+                            history.save(item)
+                            msg.imageUrl?.let { imgUrl ->
+                                scope.launch { artwork.download(imgUrl, item.form, item.id) }
+                            }
                         }
                         // Always request the bubble so it appears once the target app is in front.
                         // If MainActivity is currently resumed, BubbleController suppresses the start

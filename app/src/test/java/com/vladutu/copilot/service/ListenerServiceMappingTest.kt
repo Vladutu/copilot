@@ -4,6 +4,7 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.history.from
 import com.vladutu.copilot.net.Message
+import com.vladutu.copilot.net.savesToHistory
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -32,5 +33,22 @@ class ListenerServiceMappingTest {
         val m = msg(Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2")
         val item = SavedItem.from(m, savedAt = 1L)
         assertEquals(40, item.id.length) // SHA-1 hex
+    }
+
+    @Test fun `savesToHistory returns true for waze and ytmusic`() {
+        val waze = msg(Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2")
+        val ytmusic = msg(Form.SONG, "https://music.youtube.com/watch?v=abc")
+        assertEquals(true, waze.savesToHistory())
+        assertEquals(true, ytmusic.savesToHistory())
+    }
+
+    @Test fun `savesToHistory returns false for maps`() {
+        val maps = Message(
+            v = 3, ts = 1_700_000_000L, cmd = "maps",
+            form = Form.DESTINATION,
+            url = "https://www.google.com/maps/place/X",
+            title = null, imageUrl = null,
+        )
+        assertEquals(false, maps.savesToHistory())
     }
 }
