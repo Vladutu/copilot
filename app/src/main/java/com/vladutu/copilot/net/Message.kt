@@ -27,6 +27,7 @@ data class Message(
         )
         private val MAPS_ALLOWED_PREFIXES = listOf(
             "https://www.google.com/maps",
+            "https://google.com/maps",
             "https://maps.google.com/",
             "https://maps.app.goo.gl/",
             "https://goo.gl/maps/",

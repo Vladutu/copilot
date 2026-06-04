@@ -108,4 +108,10 @@ class MessageTest {
         assertTrue(res is ParseResult.Rejected)
         assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
     }
+
+    @Test fun `accepts maps cmd with bare google_com host (no www)`() {
+        val body = """{"v":3,"ts":$now,"cmd":"maps","form":"destination","url":"https://google.com/maps/place/Brandenburg+Gate"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+    }
 }
