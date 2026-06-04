@@ -40,6 +40,13 @@ class AppLauncherTest {
         assertTrue(intent.`package` == AppLauncher.WAZE_PKG)
     }
 
+    @Test fun `launches maps destination message`() {
+        val res = launcher.launch(msg("maps", Form.DESTINATION, "https://www.google.com/maps/place/X"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.`package` == AppLauncher.MAPS_PKG)
+    }
+
     @Test fun `replay from SavedItem works`() {
         val item = SavedItem(Form.SONG, "abc", null, null, "https://music.youtube.com/watch?v=abc", 0)
         val res = launcher.replay(item)

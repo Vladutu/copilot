@@ -38,11 +38,13 @@ class AppLauncher(private val context: Context) {
         val targetPkg = when (cmd) {
             "ytmusic" -> YT_MUSIC_PKG
             "waze" -> WAZE_PKG
+            "maps" -> MAPS_PKG
             else -> return Result.Failed("unknown command: $cmd")
         }
         val missingMsg = when (cmd) {
             "ytmusic" -> "YouTube Music not installed"
             "waze" -> "Waze not installed"
+            "maps" -> "Google Maps not installed"
             else -> "target app not installed"
         }
 
@@ -78,5 +80,6 @@ class AppLauncher(private val context: Context) {
         const val TAG = "AppLauncher"
         const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
         const val WAZE_PKG = "com.waze"
+        const val MAPS_PKG = "com.google.android.apps.maps"
     }
 }
