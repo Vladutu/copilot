@@ -2,18 +2,19 @@ package com.vladutu.copilot.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Dark scheme
-val DDBlack = Color(0xFF000000)
-val DDSurface = Color(0xFF111114)
-val DDSurfaceVariant = Color(0xFF1E1E24)
-val DDOnSurface = Color(0xFFFFFFFF)
-val DDAccent = Color(0xFFFFB000)        // amber — high contrast, low glare
-val DDAccentOn = Color(0xFF000000)
-val DDError = Color(0xFFFF5252)
+// Dark automotive-cockpit palette mirrored from Pilot's 4387a43. Dark-only —
+// the carbox screen reads the same at noon and midnight, so no light variant.
 
-// Tile palette — vibrant, dim overlay applied when artwork is present.
-val TilePalette = listOf(
-    Color(0xFF1565C0), Color(0xFF2E7D32), Color(0xFFAD1457),
-    Color(0xFF6A1B9A), Color(0xFFC62828), Color(0xFFEF6C00),
-    Color(0xFF00838F), Color(0xFF4527A0)
-)
+val PilotBackground = Color(0xFF0E1116)       // near-black with a touch of blue
+val PilotSurface = Color(0xFF161B22)          // cards / tiles sit on this
+val PilotSurfaceVariant = Color(0xFF1E2530)   // status pill bg, etc.
+val PilotOutline = Color(0xFF2A323D)          // 1dp tile borders, dividers
+
+val PilotPrimary = Color(0xFFFFB020)          // warm amber — accent, focus
+val PilotOnPrimary = Color(0xFF0E1116)
+
+val PilotOnSurface = Color(0xFFE6EAF0)        // primary text
+val PilotOnSurfaceVariant = Color(0xFF9AA4B2) // secondary text, muted
+
+val PilotError = Color(0xFFE5484D)            // error states
+val PilotOk = Color(0xFF4FCB66)               // healthy / connected

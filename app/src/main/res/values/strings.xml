@@ -5,6 +5,7 @@
     <string name="bubble_notification_body">Tap to return to Copilot</string>
     <string name="stop_bubble">Stop</string>
     <string name="home_waze">Waze</string>
+    <string name="home_maps">Maps</string>
     <string name="home_playlists">Playlists</string>
     <string name="home_songs">Songs</string>
     <string name="home_destinations">Destinations</string>

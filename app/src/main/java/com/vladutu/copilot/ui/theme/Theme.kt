@@ -6,37 +6,46 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DDDarkColors = darkColorScheme(
-    primary = DDAccent,
-    onPrimary = DDAccentOn,
-    background = DDBlack,
-    onBackground = DDOnSurface,
-    surface = DDSurface,
-    onSurface = DDOnSurface,
-    surfaceVariant = DDSurfaceVariant,
-    onSurfaceVariant = DDOnSurface,
-    error = DDError,
-    onError = DDOnSurface,
+private val PilotColorScheme = darkColorScheme(
+    primary = PilotPrimary,
+    onPrimary = PilotOnPrimary,
+    secondary = PilotPrimary,
+    onSecondary = PilotOnPrimary,
+    tertiary = PilotPrimary,
+    onTertiary = PilotOnPrimary,
+    background = PilotBackground,
+    onBackground = PilotOnSurface,
+    surface = PilotSurface,
+    onSurface = PilotOnSurface,
+    surfaceVariant = PilotSurfaceVariant,
+    onSurfaceVariant = PilotOnSurfaceVariant,
+    outline = PilotOutline,
+    outlineVariant = PilotOutline,
+    error = PilotError,
+    onError = PilotOnPrimary,
 )
 
 @Composable
 fun CopilotDriveTheme(content: @Composable () -> Unit) {
-    val colors = DDDarkColors
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colors.background.value.toInt()
+            window.statusBarColor = PilotBackground.toArgb()
+            window.navigationBarColor = PilotBackground.toArgb()
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
     MaterialTheme(
-        colorScheme = colors,
-        typography = DriveDeckTypography,
-        content = content
+        colorScheme = PilotColorScheme,
+        typography = PilotTypography,
+        shapes = PilotShapes,
+        content = content,
     )
 }

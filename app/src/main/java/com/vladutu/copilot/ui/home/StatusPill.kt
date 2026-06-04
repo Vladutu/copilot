@@ -16,20 +16,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.theme.PilotOk
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun StatusPill(state: UiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val dotColor = when (state.conn) {
-        is ConnState.Connected -> Color(0xFF2E7D32)
-        is ConnState.Reconnecting -> Color(0xFFF9A825)
-        is ConnState.Error -> Color(0xFFC62828)
+    val dotColor: Color = when (state.conn) {
+        is ConnState.Connected -> PilotOk
+        is ConnState.Reconnecting -> MaterialTheme.colorScheme.primary
+        is ConnState.Error -> MaterialTheme.colorScheme.error
     }
     val lastTime = state.recent.firstOrNull()?.timeSec?.let {
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it * 1000))
@@ -38,15 +40,34 @@ fun StatusPill(state: UiState, onClick: () -> Unit, modifier: Modifier = Modifie
     Row(
         modifier = modifier
             .height(48.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(14.dp).background(dotColor, CircleShape))
+        // 12dp ring (color at 18%) wrapping an 8dp solid inner dot — mirrors Pilot.
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(dotColor.copy(alpha = 0.18f))
+                .padding(2.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+        }
         if (lastTime != null) {
             Spacer(Modifier.width(8.dp))
-            Text(text = lastTime, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = lastTime,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,12 +32,13 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.service.UiState
 
-private const val TILE_COUNT = 4
+private const val TILE_COUNT = 5
 
 @Composable
 fun HomeScreen(
     state: UiState,
     onOpenWaze: () -> Unit,
+    onOpenMaps: () -> Unit,
     onOpenPlaylists: () -> Unit,
     onOpenSongs: () -> Unit,
     onOpenDestinations: () -> Unit,
@@ -42,9 +47,9 @@ fun HomeScreen(
 ) {
     BackHandler(onBack = onBackFromHome)
 
-    // Knob twist (DPAD_LEFT/RIGHT) walks the four tiles linearly: Waze → Playlists →
-    // Songs → Destinations. StatusPill is not in the rotation by design — it's
-    // touch-only, not used while driving.
+    // Knob twist (DPAD_LEFT/RIGHT) walks the five tiles linearly in reading
+    // order: Waze → Maps → Playlists → Songs → Destinations. StatusPill is
+    // touch-only — it's not in the knob rotation by design.
     val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
     var focusedIndex by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusedIndex) {
@@ -70,42 +75,51 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 24.dp, end = 24.dp, top = 72.dp, bottom = 24.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Top row — outbound nav apps (2 tiles).
             Row(
                 modifier = Modifier.weight(1f).fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                BigAppButton(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .focusRequester(tileFocus[0]),
-                    packageName = AppLauncher.WAZE_PKG,
-                    fallbackRes = R.drawable.ic_map_pin,
+                HomeTile(
+                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[0]),
                     label = stringResource(R.string.home_waze),
                     onClick = onOpenWaze,
+                    packageName = AppLauncher.WAZE_PKG,
+                    fallbackRes = R.drawable.ic_map_pin,
                 )
-                LabelTile(
+                HomeTile(
                     modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[1]),
-                    label = stringResource(R.string.home_playlists),
-                    onClick = onOpenPlaylists,
+                    label = stringResource(R.string.home_maps),
+                    onClick = onOpenMaps,
+                    packageName = AppLauncher.MAPS_PKG,
+                    fallbackRes = R.drawable.ic_map_pin,
                 )
             }
+            // Bottom row — saved-content lists (3 tiles).
             Row(
                 modifier = Modifier.weight(1f).fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                LabelTile(
+                HomeTile(
                     modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[2]),
+                    label = stringResource(R.string.home_playlists),
+                    onClick = onOpenPlaylists,
+                    fallbackIcon = Icons.Filled.PlaylistPlay,
+                )
+                HomeTile(
+                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
                     label = stringResource(R.string.home_songs),
                     onClick = onOpenSongs,
+                    fallbackIcon = Icons.Filled.MusicNote,
                 )
-                LabelTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
+                HomeTile(
+                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[4]),
                     label = stringResource(R.string.home_destinations),
                     onClick = onOpenDestinations,
+                    fallbackIcon = Icons.Filled.Place,
                 )
             }
         }

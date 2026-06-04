@@ -127,6 +127,9 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
                 onOpenWaze = {
                     if (launcher.openWazeApp() is AppLauncher.Result.Ok) onLeftToOtherApp()
                 },
+                onOpenMaps = {
+                    if (launcher.openMapsApp() is AppLauncher.Result.Ok) onLeftToOtherApp()
+                },
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
                 onOpenDestinations = { nav.navigate("list/destination") },

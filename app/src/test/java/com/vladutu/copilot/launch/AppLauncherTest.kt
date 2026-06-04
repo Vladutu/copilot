@@ -66,4 +66,11 @@ class AppLauncherTest {
         // Result depends on resolution; both Ok or Failed are acceptable in Robolectric. What matters is no exception thrown.
         assertTrue(res is AppLauncher.Result.Ok || res is AppLauncher.Result.Failed)
     }
+
+    @Test fun `openMapsApp returns a result without throwing`() {
+        val res = launcher.openMapsApp()
+        // Mirrors openWazeApp's test: in Robolectric the package may or may not
+        // be resolvable; both outcomes are acceptable. What matters is no exception.
+        assertTrue(res is AppLauncher.Result.Ok || res is AppLauncher.Result.Failed)
+    }
 }

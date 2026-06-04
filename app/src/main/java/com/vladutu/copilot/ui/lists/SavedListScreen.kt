@@ -71,12 +71,12 @@ fun SavedListScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BackHomeButton(onBack)
-            Text(text = title, style = MaterialTheme.typography.headlineMedium)
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
         }
 
         if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = emptyText, style = MaterialTheme.typography.titleMedium)
+                Text(text = emptyText, style = MaterialTheme.typography.titleLarge)
             }
         } else {
             val pageCount = (items.size + pageSize - 1) / pageSize

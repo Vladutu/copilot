@@ -29,6 +29,13 @@ class AppLauncher(private val context: Context) {
         return startNewTask(launch)
     }
 
+    /** Open Google Maps app (no nav target). */
+    fun openMapsApp(): Result {
+        val launch = context.packageManager.getLaunchIntentForPackage(MAPS_PKG)
+            ?: return Result.Failed("Google Maps not installed")
+        return startNewTask(launch)
+    }
+
     private fun cmdForForm(form: Form) = when (form) {
         Form.PLAYLIST, Form.SONG -> "ytmusic"
         Form.DESTINATION -> "waze"

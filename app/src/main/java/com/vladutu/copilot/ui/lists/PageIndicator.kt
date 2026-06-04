@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -17,7 +16,7 @@ fun PageIndicator(pageCount: Int, currentPage: Int, modifier: Modifier = Modifie
     if (pageCount <= 1) return
     Row(modifier = modifier) {
         repeat(pageCount) { idx ->
-            val color = if (idx == currentPage) MaterialTheme.colorScheme.primary else Color.Gray
+            val color = if (idx == currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
             Box(modifier = Modifier.padding(horizontal = 4.dp).size(10.dp).background(color, CircleShape))
         }
     }

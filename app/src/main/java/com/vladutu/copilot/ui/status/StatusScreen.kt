@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.config.Config
@@ -24,6 +25,7 @@ import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.ui.BackHomeButton
 import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.theme.PilotOk
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,21 +41,39 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         BackHomeButton(onBack)
-        // Connection state
+        // Connection state — ring-dot matches StatusPill.
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(20.dp).background(state.conn.color(), CircleShape))
+            val color = state.conn.color()
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.18f))
+                    .padding(3.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(color),
+                )
+            }
             Box(Modifier.size(12.dp))
-            Text(state.conn.label(), style = MaterialTheme.typography.headlineMedium)
+            Text(state.conn.label(), style = MaterialTheme.typography.titleLarge)
         }
 
         // Clock skew (only after we've observed one message)
         state.skewSec?.let { skew ->
             val sign = if (skew >= 0) "+" else ""
-            val color = if (abs(skew) > Config.MAX_MESSAGE_AGE_SEC) Color(0xFFC62828) else Color.Gray
+            val skewColor = if (abs(skew) > Config.MAX_MESSAGE_AGE_SEC) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
             Text(
                 text = "Clock skew: $sign${skew}s (phone − box)",
                 style = MaterialTheme.typography.titleMedium,
-                color = color,
+                color = skewColor,
             )
         }
 
@@ -61,7 +81,11 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Recent events", style = MaterialTheme.typography.titleMedium)
             if (state.recent.isEmpty()) {
-                Text("—", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Text(
+                    "—",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             } else {
                 for (event in state.recent) {
                     EventRow(event)
@@ -72,7 +96,7 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
         Text(
             text = "topic: ${Config.NTFY_TOPIC.take(16)}…",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         OutlinedButton(onClick = onOpenLogs) { Text("Diagnostic log") }
@@ -86,14 +110,15 @@ private fun EventRow(event: RecentEvent) {
     Text(
         text = "$time  ${event.text}",
         style = MaterialTheme.typography.bodyLarge,
-        color = if (event.ok) Color(0xFF2E7D32) else Color(0xFFC62828),
+        color = if (event.ok) PilotOk else MaterialTheme.colorScheme.error,
     )
 }
 
+@Composable
 private fun ConnState.color(): Color = when (this) {
-    is ConnState.Connected -> Color(0xFF2E7D32)
-    is ConnState.Reconnecting -> Color(0xFFF9A825)
-    is ConnState.Error -> Color(0xFFC62828)
+    is ConnState.Connected -> PilotOk
+    is ConnState.Reconnecting -> MaterialTheme.colorScheme.primary
+    is ConnState.Error -> MaterialTheme.colorScheme.error
 }
 
 private fun ConnState.label(): String = when (this) {
