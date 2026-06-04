@@ -35,10 +35,14 @@ class AppLauncher(private val context: Context) {
     }
 
     private fun launchUrl(cmd: String, form: Form, url: String): Result {
-        val targetPkg = when (cmd) {
+        // Maps share URLs (maps.app.goo.gl/...) are Firebase App Links — Maps' package
+        // doesn't claim them in intent-filters, only via verified App Links at the OS
+        // resolver level. So for cmd=maps we leave the package unset and let Android
+        // route the URL; for ytmusic/waze we pin the package to prevent a browser fallback.
+        val targetPkg: String? = when (cmd) {
             "ytmusic" -> YT_MUSIC_PKG
             "waze" -> WAZE_PKG
-            "maps" -> MAPS_PKG
+            "maps" -> null
             else -> return Result.Failed("unknown command: $cmd")
         }
         val missingMsg = when (cmd) {
@@ -49,7 +53,7 @@ class AppLauncher(private val context: Context) {
         }
 
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            setPackage(targetPkg)
+            if (targetPkg != null) setPackage(targetPkg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
@@ -57,7 +61,7 @@ class AppLauncher(private val context: Context) {
             context.startActivity(intent)
             Result.Ok
         } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "$targetPkg not installed", e)
+            Log.w(TAG, "no activity for cmd=$cmd pkg=${targetPkg ?: "<unset>"} url=$url", e)
             Result.Failed(missingMsg)
         } catch (e: SecurityException) {
             Log.w(TAG, "background activity start blocked", e)

@@ -5,6 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
+import android.content.Intent
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,11 +43,16 @@ class AppLauncherTest {
         assertTrue(intent.`package` == AppLauncher.WAZE_PKG)
     }
 
-    @Test fun `launches maps destination message`() {
-        val res = launcher.launch(msg("maps", Form.DESTINATION, "https://www.google.com/maps/place/X"))
+    @Test fun `launches maps destination message without setPackage`() {
+        // Maps share URLs (maps.app.goo.gl/...) are App Links — Maps' package doesn't
+        // claim them in intent-filters, so we let Android's resolver route the URL.
+        val url = "https://maps.app.goo.gl/TSv3jAw9kMEf5UzQ6"
+        val res = launcher.launch(msg("maps", Form.DESTINATION, url))
         assertTrue(res is AppLauncher.Result.Ok)
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
-        assertTrue(intent.`package` == AppLauncher.MAPS_PKG)
+        assertNull(intent.`package`)
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals(url, intent.data.toString())
     }
 
     @Test fun `replay from SavedItem works`() {
