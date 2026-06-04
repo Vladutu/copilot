@@ -8,7 +8,7 @@
     <string name="home_maps">Maps</string>
     <string name="home_playlists">Playlists</string>
     <string name="home_songs">Songs</string>
-    <string name="home_destinations">Destinations</string>
+    <string name="home_destinations">Places</string>
     <string name="back_home">Home</string>
     <string name="empty_playlists">Send a playlist from Pilot to fill this list</string>
     <string name="empty_songs">Send a song from Pilot to fill this list</string>

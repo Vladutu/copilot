@@ -2,10 +2,10 @@ package com.vladutu.copilot.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
@@ -56,9 +56,10 @@ fun HomeScreen(
         runCatching { tileFocus[focusedIndex].requestFocus() }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
@@ -71,62 +72,59 @@ fun HomeScreen(
                     else -> false
                 }
             },
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        // Header strip — pill lives flush right so it never overlaps a tile.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Top row — outbound nav apps (2 tiles).
-            Row(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HomeTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[0]),
-                    label = stringResource(R.string.home_waze),
-                    onClick = onOpenWaze,
-                    packageName = AppLauncher.WAZE_PKG,
-                    fallbackRes = R.drawable.ic_map_pin,
-                )
-                HomeTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[1]),
-                    label = stringResource(R.string.home_maps),
-                    onClick = onOpenMaps,
-                    packageName = AppLauncher.MAPS_PKG,
-                    fallbackRes = R.drawable.ic_map_pin,
-                )
-            }
-            // Bottom row — saved-content lists (3 tiles).
-            Row(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HomeTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[2]),
-                    label = stringResource(R.string.home_playlists),
-                    onClick = onOpenPlaylists,
-                    fallbackIcon = Icons.Filled.PlaylistPlay,
-                )
-                HomeTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
-                    label = stringResource(R.string.home_songs),
-                    onClick = onOpenSongs,
-                    fallbackIcon = Icons.Filled.MusicNote,
-                )
-                HomeTile(
-                    modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[4]),
-                    label = stringResource(R.string.home_destinations),
-                    onClick = onOpenDestinations,
-                    fallbackIcon = Icons.Filled.Place,
-                )
-            }
+            StatusPill(state = state, onClick = onOpenStatus)
         }
-        StatusPill(
-            state = state,
-            onClick = onOpenStatus,
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
-        )
+        // Top row — outbound nav apps (2 tiles).
+        Row(
+            modifier = Modifier.weight(1f).fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[0]),
+                label = stringResource(R.string.home_waze),
+                onClick = onOpenWaze,
+                packageName = AppLauncher.WAZE_PKG,
+                fallbackRes = R.drawable.ic_map_pin,
+            )
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[1]),
+                label = stringResource(R.string.home_maps),
+                onClick = onOpenMaps,
+                packageName = AppLauncher.MAPS_PKG,
+                fallbackRes = R.drawable.ic_map_pin,
+            )
+        }
+        // Bottom row — saved-content lists (3 tiles).
+        Row(
+            modifier = Modifier.weight(1f).fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[2]),
+                label = stringResource(R.string.home_playlists),
+                onClick = onOpenPlaylists,
+                fallbackIcon = Icons.Filled.PlaylistPlay,
+            )
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
+                label = stringResource(R.string.home_songs),
+                onClick = onOpenSongs,
+                fallbackIcon = Icons.Filled.MusicNote,
+            )
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[4]),
+                label = stringResource(R.string.home_destinations),
+                onClick = onOpenDestinations,
+                fallbackIcon = Icons.Filled.Place,
+            )
+        }
     }
 }
