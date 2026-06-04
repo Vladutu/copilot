@@ -12,11 +12,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 
+// 64dp tap area (was 48dp) — easier to hit on a moving car screen. The icon
+// itself stays 28dp; the extra space is invisible padding around it. IconButton
+// has no background or border by default, so the area is touch-only chrome.
 @Composable
 fun BackHomeButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(
         onClick = onBack,
-        modifier = modifier.size(48.dp),
+        modifier = modifier.size(64.dp),
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

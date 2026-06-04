@@ -37,7 +37,7 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
-import com.vladutu.copilot.ui.BackHomeButton
+import com.vladutu.copilot.ui.ScreenHeader
 
 @Composable
 fun SavedListScreen(
@@ -69,10 +69,7 @@ fun SavedListScreen(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BackHomeButton(onBack)
-            Text(text = title, style = MaterialTheme.typography.titleLarge)
-        }
+        ScreenHeader(title = title, onBack = onBack)
 
         if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -107,7 +104,7 @@ fun SavedListScreen(
             // Knob twist (DPAD_LEFT/RIGHT) walks the page's tiles linearly. At the page edge
             // it animates to the adjacent page and lands on the first tile (when going forward)
             // or the last tile (when going backward) so spatial continuity is preserved.
-            // BackHomeButton is intentionally NOT in the rotation — physical BACK handles that.
+            // The header back-arrow is intentionally NOT in the rotation — physical BACK handles that.
             val pagerKeyHandler = Modifier.onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {

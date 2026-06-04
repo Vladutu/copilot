@@ -20,14 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vladutu.copilot.diagnostics.DiagnosticLog
-import com.vladutu.copilot.ui.BackHomeButton
+import com.vladutu.copilot.ui.ScreenHeader
 
 @Composable
 fun LogsScreen(onBack: () -> Unit) {
@@ -38,10 +37,7 @@ fun LogsScreen(onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BackHomeButton(onBack)
-            Text(text = "Diagnostic log", style = MaterialTheme.typography.headlineMedium)
-        }
+        ScreenHeader(title = "Diagnostic log", onBack = onBack)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { content = DiagnosticLog.read() }) { Text("Refresh") }
             OutlinedButton(onClick = {

@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
-import com.vladutu.copilot.ui.BackHomeButton
+import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.theme.PilotOk
@@ -40,7 +40,7 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        BackHomeButton(onBack)
+        ScreenHeader(title = "Status", onBack = onBack)
         // Connection state — ring-dot matches StatusPill.
         Row(verticalAlignment = Alignment.CenterVertically) {
             val color = state.conn.color()
