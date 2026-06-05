@@ -3,7 +3,6 @@ package com.vladutu.copilot.boot
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.vladutu.copilot.MainActivity
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 
 class BootReceiver : BroadcastReceiver() {
@@ -11,13 +10,15 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent.action
         DiagnosticLog.i("Boot", "received action=$action")
         if (action !in HANDLED_ACTIONS) return
-        val launch = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Directly calling startActivity from a receiver hits Background Activity
+        // Launch and gets silently dropped on Android 10+. Bounce through a
+        // foreground service which can legitimately start the activity.
+        val svc = Intent(context, BootLaunchService::class.java)
         try {
-            context.startActivity(launch)
-            DiagnosticLog.i("Boot", "launched MainActivity")
+            context.startForegroundService(svc)
+            DiagnosticLog.i("Boot", "startForegroundService(BootLaunchService) ok")
         } catch (t: Throwable) {
-            DiagnosticLog.e("Boot", "launch failed (${t.javaClass.simpleName})", t)
+            DiagnosticLog.e("Boot", "startForegroundService failed (${t.javaClass.simpleName})", t)
         }
     }
 

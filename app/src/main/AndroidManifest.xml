@@ -49,6 +49,11 @@
             android:exported="false" />
 
         <service
+            android:name=".boot.BootLaunchService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <service
             android:name=".bubble.BubbleService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
