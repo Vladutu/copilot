@@ -114,7 +114,7 @@ fun SavedTile(
             }
             Text(
                 text = item.title ?: "Untitled · ${item.id.take(8)}",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
