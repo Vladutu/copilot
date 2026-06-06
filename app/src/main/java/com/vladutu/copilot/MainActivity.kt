@@ -3,6 +3,7 @@ package com.vladutu.copilot
 import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -115,6 +116,16 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
     val app = context.applicationContext as CopilotApp
     val launcher = remember { AppLauncher(context) }
 
+    // A successful launch sends Copilot to the back, so a failure leaves this UI
+    // in front — surface the reason as a toast instead of swallowing it silently.
+    fun launchOrReport(result: AppLauncher.Result, onOk: () -> Unit) {
+        when (result) {
+            is AppLauncher.Result.Ok -> onOk()
+            is AppLauncher.Result.Failed ->
+                Toast.makeText(context, result.reason, Toast.LENGTH_LONG).show()
+        }
+    }
+
     LaunchedEffect(showHomeTrigger) {
         if (showHomeTrigger > 0) nav.popBackStack(route = "home", inclusive = false)
     }
@@ -124,12 +135,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
             HomeScreen(
                 state = uiState,
-                onOpenWaze = {
-                    if (launcher.openWazeApp() is AppLauncher.Result.Ok) onLeftToOtherApp()
-                },
-                onOpenMaps = {
-                    if (launcher.openMapsApp() is AppLauncher.Result.Ok) onLeftToOtherApp()
-                },
+                onOpenWaze = { launchOrReport(launcher.openWazeApp()) { onLeftToOtherApp() } },
+                onOpenMaps = { launchOrReport(launcher.openMapsApp()) { onLeftToOtherApp() } },
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
                 onOpenDestinations = { nav.navigate("list/destination") },
@@ -148,7 +155,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
                 form = form,
                 artworkCache = app.locator.artworkCache,
                 onTap = { item ->
-                    if (launcher.replay(item) is AppLauncher.Result.Ok) {
+                    launchOrReport(launcher.replay(item)) {
                         app.applicationScope.launch {
                             app.locator.historyRepository.touch(item.form, item.id)
                         }
