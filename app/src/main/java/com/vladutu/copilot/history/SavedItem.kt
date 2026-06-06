@@ -23,6 +23,7 @@ fun SavedItem.Companion.from(message: Message, savedAt: Long): SavedItem {
         Form.SONG -> Regex("""[?&]v=([A-Za-z0-9_\-]+)""").find(message.url)?.groupValues?.get(1)
             ?: sha1(message.url)
         Form.DESTINATION -> sha1(message.url)
+        Form.RADIO -> sha1(message.url)
     }
     return SavedItem(
         form = message.form,

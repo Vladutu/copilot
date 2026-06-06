@@ -17,10 +17,14 @@ class AppLauncher(private val context: Context) {
     }
 
     /** Entry point for Pilot-driven launches via ListenerService. */
-    fun launch(msg: Message): Result = launchUrl(msg.cmd, msg.form, msg.url)
+    fun launch(msg: Message): Result =
+        if (msg.cmd == "radio") launchRadio(msg.url, msg.title)
+        else launchUrl(msg.cmd, msg.form, msg.url)
 
     /** Entry point for UI-driven re-plays from a saved tile. */
-    fun replay(item: SavedItem): Result = launchUrl(cmdForForm(item.form), item.form, item.url)
+    fun replay(item: SavedItem): Result =
+        if (item.form == Form.RADIO) launchRadio(item.url, item.title)
+        else launchUrl(cmdForForm(item.form), item.form, item.url)
 
     /** Open Waze app (no nav target). */
     fun openWazeApp(): Result {
@@ -39,6 +43,7 @@ class AppLauncher(private val context: Context) {
     private fun cmdForForm(form: Form) = when (form) {
         Form.PLAYLIST, Form.SONG -> "ytmusic"
         Form.DESTINATION -> "waze"
+        Form.RADIO -> "radio"
     }
 
     private fun launchUrl(cmd: String, form: Form, url: String): Result {
@@ -76,6 +81,32 @@ class AppLauncher(private val context: Context) {
         }
     }
 
+    // Build the VLC launch intent for a radio stream. Internal + pure so it can be
+    // asserted in tests without touching the Activity stack.
+    //
+    // MIME is "audio/*" (opens VLC's audio player). If a station opens VLC but does
+    // not auto-play on the carbox, change this to "video/*" (known-reliable) — see plan.
+    internal fun buildRadioIntent(url: String, title: String?): Intent =
+        Intent(Intent.ACTION_VIEW).apply {
+            setPackage(VLC_PKG)
+            setDataAndTypeAndNormalize(Uri.parse(url), "audio/*")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            title?.let { putExtra("title", it) }
+        }
+
+    private fun launchRadio(url: String, title: String?): Result {
+        return try {
+            context.startActivity(buildRadioIntent(url, title))
+            Result.Ok
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "no activity for radio url=$url", e)
+            Result.Failed("VLC not installed")
+        } catch (e: SecurityException) {
+            Log.w(TAG, "background activity start blocked", e)
+            Result.Failed("background launch blocked — grant Display over other apps")
+        }
+    }
+
     private fun startNewTask(intent: Intent): Result {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
@@ -92,5 +123,6 @@ class AppLauncher(private val context: Context) {
         const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
         const val WAZE_PKG = "com.waze"
         const val MAPS_PKG = "com.google.android.apps.maps"
+        const val VLC_PKG = "org.videolan.vlc"
     }
 }

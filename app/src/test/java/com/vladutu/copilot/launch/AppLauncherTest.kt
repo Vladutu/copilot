@@ -73,4 +73,30 @@ class AppLauncherTest {
         // be resolvable; both outcomes are acceptable. What matters is no exception.
         assertTrue(res is AppLauncher.Result.Ok || res is AppLauncher.Result.Failed)
     }
+
+    @Test fun `buildRadioIntent targets VLC with audio mime and title extra`() {
+        val intent = launcher.buildRadioIntent("https://live.example.ro/europafm.mp3", "Europa FM")
+        assertEquals(AppLauncher.VLC_PKG, intent.`package`)
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals("https://live.example.ro/europafm.mp3", intent.data.toString())
+        assertEquals("audio/*", intent.type)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertEquals("Europa FM", intent.getStringExtra("title"))
+    }
+
+    @Test fun `launches radio message via VLC`() {
+        val res = launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.VLC_PKG, intent.`package`)
+        assertEquals("audio/*", intent.type)
+    }
+
+    @Test fun `replays RADIO SavedItem via VLC`() {
+        val item = SavedItem(Form.RADIO, "abc", "Europa FM", null, "https://live.example.ro/europafm.mp3", 0)
+        val res = launcher.replay(item)
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.VLC_PKG, intent.`package`)
+    }
 }

@@ -18,4 +18,12 @@ class FormTest {
         assertNull(Form.fromWire("unknown"))
         assertNull(Form.fromWire(null))
     }
+
+    @Test fun `radio wire value`() {
+        assertEquals("radio", Form.RADIO.wire)
+    }
+
+    @Test fun `fromWire maps radio`() {
+        assertEquals(Form.RADIO, Form.fromWire("radio"))
+    }
 }

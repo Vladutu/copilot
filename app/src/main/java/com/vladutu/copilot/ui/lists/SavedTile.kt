@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,10 +100,13 @@ fun SavedTile(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
+                    val fallbackPainter = when (item.form) {
+                        Form.DESTINATION -> painterResource(id = R.drawable.ic_map_pin)
+                        Form.RADIO -> rememberVectorPainter(Icons.Filled.Radio)
+                        else -> painterResource(id = R.drawable.ic_music_note)
+                    }
                     Image(
-                        painter = painterResource(
-                            id = if (item.form == Form.DESTINATION) R.drawable.ic_map_pin else R.drawable.ic_music_note
-                        ),
+                        painter = fallbackPainter,
                         contentDescription = null,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize(),
@@ -146,4 +151,5 @@ private fun formIcon(form: Form): ImageVector = when (form) {
     Form.PLAYLIST -> Icons.Filled.PlaylistPlay
     Form.SONG -> Icons.Filled.MusicNote
     Form.DESTINATION -> Icons.Filled.Place
+    Form.RADIO -> Icons.Filled.Radio
 }

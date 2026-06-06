@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 enum class Form {
     PLAYLIST,
     SONG,
-    DESTINATION;
+    DESTINATION,
+    RADIO;
 
     val wire: String get() = name.lowercase()
 
@@ -15,6 +16,7 @@ enum class Form {
             "playlist" -> PLAYLIST
             "song" -> SONG
             "destination" -> DESTINATION
+            "radio" -> RADIO
             else -> null
         }
     }

@@ -114,4 +114,48 @@ class MessageTest {
         val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
         assertTrue(res is ParseResult.Accepted)
     }
+
+    @Test fun `accepts radio cmd with https stream url`() {
+        val body = """{"v":3,"ts":$now,"cmd":"radio","form":"radio","url":"https://live.example.ro/europafm.mp3","title":"Europa FM","imageUrl":"https://example.ro/fav.png"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+        val msg = (res as ParseResult.Accepted).message
+        assertEquals("radio", msg.cmd)
+        assertEquals(Form.RADIO, msg.form)
+        assertEquals("Europa FM", msg.title)
+        assertEquals("https://example.ro/fav.png", msg.imageUrl)
+    }
+
+    @Test fun `accepts radio cmd with http stream url`() {
+        val body = """{"v":3,"ts":$now,"cmd":"radio","form":"radio","url":"http://1.2.3.4:8000/stream.aac"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+    }
+
+    @Test fun `accepts radio cmd from arbitrary host (no allow-list)`() {
+        val body = """{"v":3,"ts":$now,"cmd":"radio","form":"radio","url":"https://some-random-icecast.example/stream"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+    }
+
+    @Test fun `rejects radio cmd with non-http scheme`() {
+        val body = """{"v":3,"ts":$now,"cmd":"radio","form":"radio","url":"ftp://example.ro/stream"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("non-http(s) radio url", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects radio cmd with non-radio form`() {
+        val body = """{"v":3,"ts":$now,"cmd":"radio","form":"playlist","url":"https://live.example.ro/x.mp3"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects radio form with non-radio cmd`() {
+        val body = """{"v":3,"ts":$now,"cmd":"ytmusic","form":"radio","url":"https://music.youtube.com/watch?list=L"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
 }

@@ -27,6 +27,7 @@ class HistoryStore(private val dataStore: DataStore<Preferences>) {
         Form.PLAYLIST -> KEY_PLAYLISTS
         Form.SONG -> KEY_SONGS
         Form.DESTINATION -> KEY_DESTINATIONS
+        Form.RADIO -> KEY_RADIO
     }
 
     private fun decode(blob: String?): List<SavedItem> {
@@ -44,6 +45,7 @@ class HistoryStore(private val dataStore: DataStore<Preferences>) {
         val KEY_PLAYLISTS = stringPreferencesKey("saved_playlists")
         val KEY_SONGS = stringPreferencesKey("saved_songs")
         val KEY_DESTINATIONS = stringPreferencesKey("saved_destinations")
+        val KEY_RADIO = stringPreferencesKey("saved_radio")
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }
 }

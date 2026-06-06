@@ -90,6 +90,7 @@ class ListenerService : Service() {
                     val label = when (msg.cmd) {
                         "ytmusic" -> "play"
                         "waze", "maps" -> "navigate"
+                        "radio" -> "listen"
                         else -> msg.cmd
                     }
                     val text = when (outcome) {

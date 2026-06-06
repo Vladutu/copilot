@@ -17,6 +17,8 @@ data class Message(
     companion object {
         private const val SCHEMA_VERSION = 3
 
+        private val KNOWN_CMDS = setOf("ytmusic", "waze", "maps", "radio")
+
         private val YT_MUSIC_ALLOWED_PREFIXES = listOf(
             "https://music.youtube.com/",
         )
@@ -54,12 +56,7 @@ data class Message(
             if (abs(skew) > maxAgeSec) return ParseResult.Rejected("stale (${skew}s)", skew)
 
             val cmd = body.optString("cmd")
-            val allowedPrefixes = when (cmd) {
-                "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
-                "waze" -> WAZE_ALLOWED_PREFIXES
-                "maps" -> MAPS_ALLOWED_PREFIXES
-                else -> return ParseResult.Rejected("unknown cmd=$cmd", skew)
-            }
+            if (cmd !in KNOWN_CMDS) return ParseResult.Rejected("unknown cmd=$cmd", skew)
 
             val form = Form.fromWire(body.optString("form").takeIf { it.isNotBlank() })
                 ?: return ParseResult.Rejected("unknown form", skew)
@@ -67,14 +64,31 @@ data class Message(
             val cmdFormConsistent = when (cmd) {
                 "ytmusic" -> form == Form.PLAYLIST || form == Form.SONG
                 "waze", "maps" -> form == Form.DESTINATION
+                "radio" -> form == Form.RADIO
                 else -> false
             }
             if (!cmdFormConsistent) return ParseResult.Rejected("cmd/form mismatch", skew)
 
             val url = body.optString("url")
             if (url.isBlank()) return ParseResult.Rejected("missing url", skew)
-            if (allowedPrefixes.none { url.startsWith(it) }) {
-                return ParseResult.Rejected("untrusted host", skew)
+
+            // Radio streams come from arbitrary hosts, so the per-host allow-list does
+            // not apply. Accept any http(s) URL; reject other schemes (don't launch
+            // arbitrary intents). ytmusic/waze/maps keep their host allow-lists.
+            if (cmd == "radio") {
+                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    return ParseResult.Rejected("non-http(s) radio url", skew)
+                }
+            } else {
+                val allowedPrefixes = when (cmd) {
+                    "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
+                    "waze" -> WAZE_ALLOWED_PREFIXES
+                    "maps" -> MAPS_ALLOWED_PREFIXES
+                    else -> emptyList()
+                }
+                if (allowedPrefixes.none { url.startsWith(it) }) {
+                    return ParseResult.Rejected("untrusted host", skew)
+                }
             }
 
             val title = body.optString("title").takeIf { it.isNotBlank() }

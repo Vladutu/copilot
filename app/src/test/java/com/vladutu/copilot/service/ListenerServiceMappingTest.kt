@@ -10,9 +10,14 @@ import org.junit.Test
 
 class ListenerServiceMappingTest {
 
-    private fun msg(form: Form, url: String, title: String? = null) =
-        Message(v = 3, ts = 1_700_000_000L, cmd = if (form == Form.DESTINATION) "waze" else "ytmusic",
-                form = form, url = url, title = title, imageUrl = null)
+    private fun msg(form: Form, url: String, title: String? = null): Message {
+        val cmd = when (form) {
+            Form.DESTINATION -> "waze"
+            Form.RADIO -> "radio"
+            else -> "ytmusic"
+        }
+        return Message(v = 3, ts = 1_700_000_000L, cmd = cmd, form = form, url = url, title = title, imageUrl = null)
+    }
 
     @Test fun `playlist mapping uses parsed list id`() {
         val m = msg(Form.PLAYLIST, "https://music.youtube.com/watch?list=OLAK5uy_xxx", "Mix")
@@ -50,5 +55,18 @@ class ListenerServiceMappingTest {
             title = null, imageUrl = null,
         )
         assertEquals(false, maps.savesToHistory())
+    }
+
+    @Test fun `radio mapping uses sha1 of url`() {
+        val m = msg(Form.RADIO, "https://live.example.ro/europafm.mp3", "Europa FM")
+        val item = SavedItem.from(m, savedAt = 7L)
+        assertEquals(Form.RADIO, item.form)
+        assertEquals(40, item.id.length) // SHA-1 hex
+        assertEquals("Europa FM", item.title)
+    }
+
+    @Test fun `savesToHistory returns true for radio`() {
+        val radio = msg(Form.RADIO, "https://live.example.ro/europafm.mp3")
+        assertEquals(true, radio.savesToHistory())
     }
 }

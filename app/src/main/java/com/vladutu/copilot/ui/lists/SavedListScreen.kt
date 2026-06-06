@@ -53,11 +53,13 @@ fun SavedListScreen(
         Form.PLAYLIST -> stringResource(R.string.home_playlists)
         Form.SONG -> stringResource(R.string.home_songs)
         Form.DESTINATION -> stringResource(R.string.home_destinations)
+        Form.RADIO -> stringResource(R.string.home_radio)
     }
     val emptyText = when (form) {
         Form.PLAYLIST -> stringResource(R.string.empty_playlists)
         Form.SONG -> stringResource(R.string.empty_songs)
         Form.DESTINATION -> stringResource(R.string.empty_destinations)
+        Form.RADIO -> stringResource(R.string.empty_radio)
     }
 
     val scope = rememberCoroutineScope()

@@ -140,6 +140,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
                 onOpenDestinations = { nav.navigate("list/destination") },
+                onOpenRadio = { nav.navigate("list/radio") },
                 onOpenStatus = { nav.navigate("status") },
                 onBackFromHome = onLeftToOtherApp,
             )
