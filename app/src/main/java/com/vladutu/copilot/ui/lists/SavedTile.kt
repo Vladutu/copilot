@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
@@ -119,7 +120,7 @@ fun SavedTile(
             }
             Text(
                 text = item.title ?: "Untitled · ${item.id.take(8)}",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp, lineHeight = 32.sp),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

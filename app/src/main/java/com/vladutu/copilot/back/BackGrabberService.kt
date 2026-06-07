@@ -92,9 +92,10 @@ class BackGrabberService : AccessibilityService() {
     }
 
     private fun bringCopilotToFront() {
+        // REORDER_TO_FRONT preserves the activity's nav back stack, so Copilot
+        // returns to the screen the driver was last on rather than resetting Home.
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(MainActivity.EXTRA_SHOW_HOME, true)
         }
         applicationContext.startActivity(intent)
     }

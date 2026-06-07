@@ -121,7 +121,7 @@ fun SavedListScreen(
                                 focusedIndex = 0
                             }
                             true
-                        } else false
+                        } else true // at the very last tile: consume so focus can't leak to default traversal
                     }
                     Key.DirectionLeft -> {
                         if (focusedIndex > 0) {
@@ -134,7 +134,7 @@ fun SavedListScreen(
                                 focusedIndex = (itemsOnPage(newPage) - 1).coerceAtLeast(0)
                             }
                             true
-                        } else false
+                        } else true // at the very first tile: consume so focus can't leak to default traversal
                     }
                     else -> false
                 }

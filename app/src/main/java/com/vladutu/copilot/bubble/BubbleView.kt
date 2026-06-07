@@ -95,9 +95,11 @@ class BubbleView(
     }
 
     private fun openMainActivity() {
+        // REORDER_TO_FRONT brings the existing activity (and its in-memory nav
+        // back stack) forward, so Copilot reopens on whatever screen the driver
+        // last had — we deliberately don't reset to Home.
         val intent = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(MainActivity.EXTRA_SHOW_HOME, true)
         }
         context.startActivity(intent)
     }

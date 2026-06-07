@@ -37,7 +37,7 @@ import com.vladutu.copilot.service.UiState
 
 // Waze + Maps + Playlists + Songs + Places + Radio. Knob walks all six.
 private const val TILE_COUNT = 6
-private const val MEDIA_COLUMNS = 3
+private const val MEDIA_COLUMNS = 2
 
 private data class MediaTile(val labelRes: Int, val icon: ImageVector, val onClick: () -> Unit)
 
@@ -77,11 +77,20 @@ fun HomeScreen(
             .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // Always consume Left/Right so focusedIndex stays the single source
+                // of truth. Returning false at the ends would hand the event to
+                // Compose's default directional focus search, which moves the
+                // on-screen focus independently of focusedIndex — the two desync and
+                // the knob appears to bounce back into earlier tiles. Clamp instead.
                 when (event.key) {
-                    Key.DirectionRight ->
-                        if (focusedIndex < TILE_COUNT - 1) { focusedIndex++; true } else false
-                    Key.DirectionLeft ->
-                        if (focusedIndex > 0) { focusedIndex--; true } else false
+                    Key.DirectionRight -> {
+                        if (focusedIndex < TILE_COUNT - 1) focusedIndex++
+                        true
+                    }
+                    Key.DirectionLeft -> {
+                        if (focusedIndex > 0) focusedIndex--
+                        true
+                    }
                     else -> false
                 }
             },
@@ -115,9 +124,10 @@ fun HomeScreen(
                 fallbackRes = R.drawable.ic_map_pin,
             )
         }
-        // Media tiles — 3-column grid; Radio (4th) wraps to a second row.
+        // Media tiles — 2-column grid (Playlists/Songs, then Places/Radio), so
+        // the whole home is a uniform 2-wide grid with the Waze/Maps row above.
         // Each row keeps weight 1f so tile size stays consistent; trailing slots
-        // in a partial row are empty placeholders so tiles stay 3-wide.
+        // in a partial row are empty placeholders so tiles stay grid-aligned.
         mediaTiles.chunked(MEDIA_COLUMNS).forEachIndexed { rowIndex, rowTiles ->
             Row(
                 modifier = Modifier.weight(1f).fillMaxSize(),

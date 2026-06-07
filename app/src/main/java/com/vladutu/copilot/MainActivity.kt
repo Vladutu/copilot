@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,32 +32,17 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private var showHomeTrigger by mutableIntStateOf(0)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startListenerService()
-        handleIntent(intent)
         setContent {
             CopilotDriveTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     PermissionGate {
-                        CopilotNav(::leaveToOtherApp, showHomeTrigger)
+                        CopilotNav(::leaveToOtherApp)
                     }
                 }
             }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_SHOW_HOME, false) == true) {
-            showHomeTrigger++
         }
     }
 
@@ -103,14 +85,10 @@ class MainActivity : ComponentActivity() {
         BubbleController.requestShow(this)
         moveTaskToBack(true)
     }
-
-    companion object {
-        const val EXTRA_SHOW_HOME = "show_home"
-    }
 }
 
 @Composable
-private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
+private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     val nav = rememberNavController()
     val context = LocalContext.current
     val app = context.applicationContext as CopilotApp
@@ -124,10 +102,6 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit, showHomeTrigger: Int) {
             is AppLauncher.Result.Failed ->
                 Toast.makeText(context, result.reason, Toast.LENGTH_LONG).show()
         }
-    }
-
-    LaunchedEffect(showHomeTrigger) {
-        if (showHomeTrigger > 0) nav.popBackStack(route = "home", inclusive = false)
     }
 
     NavHost(navController = nav, startDestination = "home") {
