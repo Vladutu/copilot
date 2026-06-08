@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
@@ -68,6 +69,12 @@ class AppLauncher(private val context: Context) {
             if (targetPkg != null) setPackage(targetPkg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+
+        // Song/playlist launches go to YT Music's foreground; arm the auto-return so the
+        // accessibility service brings us back once YT Music has loaded. cmd=="ytmusic"
+        // implies form is SONG or PLAYLIST (enforced by Message validation). Radio (VLC,
+        // background) and maps/waze (nav stays foreground) are deliberately not armed.
+        if (cmd == "ytmusic") AutoSwitchBack.arm()
 
         return try {
             context.startActivity(intent)

@@ -3,9 +3,12 @@ package com.vladutu.copilot.back
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.vladutu.copilot.MainActivity
+import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 
@@ -27,6 +30,11 @@ class BackGrabberService : AccessibilityService() {
      *  a half-pressed state. */
     private var consumingThisPress = false
 
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** Guards against scheduling multiple settle-timers from repeated YT Music window events. */
+    private var switchBackPending = false
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         // Belt-and-suspenders: also set the filter-key-events flag programmatically. Some
@@ -37,10 +45,55 @@ class BackGrabberService : AccessibilityService() {
                 flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
             }
         }
-        DiagnosticLog.i(TAG, "onServiceConnected flags=0x${serviceInfo?.flags?.toString(16)} caps=0x${serviceInfo?.capabilities?.toString(16)}")
+        AutoSwitchBack.ownPackage = applicationContext.packageName
+        DiagnosticLog.i(TAG, "onServiceConnected flags=0x${serviceInfo?.flags?.toString(16)} caps=0x${serviceInfo?.capabilities?.toString(16)} ownPkg=${applicationContext.packageName}")
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* unused */ }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val pkg = event.packageName?.toString() ?: return
+        AutoSwitchBack.onForeground(pkg)
+
+        if (pkg == AutoSwitchBack.YT_MUSIC_PKG &&
+            AutoSwitchBack.shouldScheduleOnYtMusicShown() &&
+            !switchBackPending
+        ) {
+            switchBackPending = true
+            DiagnosticLog.i(TAG, "YT Music shown while armed — switch-back in ${AutoSwitchBack.SETTLE_MS}ms")
+            handler.postDelayed({ fireSwitchBack() }, AutoSwitchBack.SETTLE_MS)
+        }
+    }
+
+    private fun fireSwitchBack() {
+        switchBackPending = false
+        val target = AutoSwitchBack.resolveTargetAtFire()
+        AutoSwitchBack.disarm()
+        if (target == null) {
+            // Logs the foreground that caused the abort so a false-abort from a transient
+            // system window (e.g. the volume HUD when playback starts) is diagnosable on the box.
+            DiagnosticLog.i(TAG, "switch-back aborted — foreground=${AutoSwitchBack.foregroundForDiagnostics()}")
+            return
+        }
+        restoreApp(target)
+    }
+
+    private fun restoreApp(pkg: String) {
+        val intent = if (pkg == applicationContext.packageName) {
+            // REORDER_TO_FRONT preserves Copilot's nav back stack (driver returns to the
+            // screen they were last on rather than resetting to Home).
+            Intent(applicationContext, MainActivity::class.java)
+        } else {
+            applicationContext.packageManager.getLaunchIntentForPackage(pkg)
+        }
+        if (intent == null) {
+            DiagnosticLog.w(TAG, "no launch intent for $pkg — staying in YT Music")
+            return
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { applicationContext.startActivity(intent) }
+            .onSuccess { DiagnosticLog.i(TAG, "switched back to $pkg") }
+            .onFailure { DiagnosticLog.w(TAG, "switch-back startActivity failed for $pkg", it) }
+    }
 
     override fun onInterrupt() {
         DiagnosticLog.w(TAG, "onInterrupt")

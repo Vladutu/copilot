@@ -2,11 +2,13 @@ package com.vladutu.copilot.launch
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
 import android.content.Intent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -98,5 +100,26 @@ class AppLauncherTest {
         assertTrue(res is AppLauncher.Result.Ok)
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.VLC_PKG, intent.`package`)
+    }
+
+    @Test fun `arms autoswitch for ytmusic launch`() {
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=X"))
+        assertTrue(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `does not arm autoswitch for waze launch`() {
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        assertFalse(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `does not arm autoswitch for radio launch`() {
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
+        assertFalse(AutoSwitchBack.isArmed())
     }
 }
