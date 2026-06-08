@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.ui.ScreenHeader
@@ -95,6 +96,12 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
 
         Text(
             text = "topic: ${Config.NTFY_TOPIC.take(16)}…",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Text(
+            text = "v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -27,6 +27,12 @@ as the latest release on `Vladutu/copilot` with `copilot-0.2.0.apk` attached.
 
 `versionCode` = `major*10000 + minor*100 + patch` (so `0.2.0` -> `200`). Keep minor/patch < 100.
 
+## Verify the installed version
+
+Open Copilot → tap the status pill → the **Status** screen shows `vX.Y.Z` (the build's
+`versionName`) beneath the ntfy topic line. Use it to confirm the device picked up a new
+release. Debug builds read `vX.Y.Z-debug`.
+
 ## Obtainium (the car box device)
 
 1. Install Obtainium (from its GitHub releases page).
