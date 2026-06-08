@@ -91,6 +91,12 @@ testable; the accessibility service is the only Android-touching piece.
 
 - **`BackGrabberService` (extended `onAccessibilityEvent`, currently a no-op)**
   - On each `TYPE_WINDOW_STATE_CHANGED` with a non-null `packageName`:
+    0. Ignore the event unless `pkg` is **restorable** — Copilot itself, YT Music, or a
+       package with a launcher activity (`getLaunchIntentForPackage != null`, cached). This
+       filters out overlay / floating-widget apps (e.g. `com.applepie.floatingball`) and
+       system UI (volume HUD) that fire window events but aren't real foreground apps and
+       can't be returned to. Without this, such a window can become the snapshotted target
+       (then fail to restore) or trip a spurious "user moved away" abort.
     1. `AutoSwitchBack.onForeground(pkg)`.
     2. If `pkg == YT_MUSIC_PKG` and `AutoSwitchBack.shouldScheduleOnYtMusicShown()` and no
        switch-back is already pending: set a pending flag and `handler.postDelayed(SETTLE_MS)`.
@@ -132,21 +138,19 @@ testable; the accessibility service is the only Android-touching piece.
 
 ## Known limitations / on-device risks
 
-1. **Null launch intent:** if `getLaunchIntentForPackage` returns null for the previous app
-   (rare — e.g. a launcher with no exported launch intent), the service disarms and does
-   nothing; the driver stays in YT Music. Logged via `DiagnosticLog`.
+1. **Overlay / system-UI windows polluting foreground tracking — RESOLVED 2026-06-08.**
+   Originally a risk (volume HUD `com.android.systemui`) and then observed on the carbox: a
+   floating-ball overlay app (`com.applepie.floatingball`) fired a window-state event right as
+   a Pilot share arrived, became the snapshotted target, and couldn't be restored
+   (`no launch intent … staying in YT Music`). Fixed by the **restorable filter** (step 0
+   above): only packages that are Copilot, YT Music, or have a launcher activity update
+   `currentForeground`, so overlays/system UI can neither become the target nor cause a false
+   abort.
 
-2. **Transient system window during the settle delay (watch for this):** if a system window
-   such as the volume HUD (`com.android.systemui`) emits a `TYPE_WINDOW_STATE_CHANGED` in the
-   ~1.2s after YT Music appears — plausible when playback starts and changes volume — then
-   `currentForeground` reads as that system package and `resolveTargetAtFire()` treats it as
-   "user moved to a third app", producing a **false abort**. Whether this fires is specific to
-   the carbox, so it is left un-hardened for the first on-device run; the abort log prints the
-   offending foreground package to make it diagnosable in one run.
-   **Ready mitigation if observed:** in `BackGrabberService.onAccessibilityEvent`, skip
-   `AutoSwitchBack.onForeground(pkg)` for known non-app system packages (e.g. ignore `pkg`
-   starting with `com.android.systemui`), so transient HUDs don't overwrite the real
-   foreground. Keep YT Music and Copilot's own package always tracked.
+2. **Genuinely unlaunchable previous app:** if the real previous app has no launcher activity
+   (very rare), it is filtered out, so the snapshot falls back to the last *restorable* app
+   seen; if none, the switch-back no-ops and the driver stays in YT Music. Logged via
+   `DiagnosticLog` (`ignoring non-app foreground …` and `no launch intent …`).
 
 ## Testing
 

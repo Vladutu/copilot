@@ -52,6 +52,14 @@ class BackGrabberService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
+
+        // Only track packages we could actually return to. Overlay / floating-widget apps
+        // (e.g. com.applepie.floatingball) and system UI (the volume HUD, etc.) fire
+        // window-state-changed events too, but they aren't real foreground apps and have no
+        // launcher activity. Tracking them would poison the restore target (we'd snapshot an
+        // unlaunchable overlay, as seen on the carbox) or trigger a spurious "user moved away"
+        // abort. Filtering to restorable packages keeps `currentForeground` on the real app.
+        if (!isRestorable(pkg)) return
         AutoSwitchBack.onForeground(pkg)
 
         if (pkg == AutoSwitchBack.YT_MUSIC_PKG &&
@@ -62,6 +70,22 @@ class BackGrabberService : AccessibilityService() {
             DiagnosticLog.i(TAG, "YT Music shown while armed — switch-back in ${AutoSwitchBack.SETTLE_MS}ms")
             handler.postDelayed({ fireSwitchBack() }, AutoSwitchBack.SETTLE_MS)
         }
+    }
+
+    /** Cache of package -> "has a launcher activity". Launchability doesn't change at runtime,
+     *  so we look each package up once instead of hitting PackageManager on every window event. */
+    private val restorableCache = HashMap<String, Boolean>()
+
+    /** A package is restorable if we can bring it back to the foreground: Copilot itself,
+     *  YouTube Music, or any app with a launcher activity. Everything else (overlays, system
+     *  UI, IMEs) is ignored so it can't become the restore target or look like the user moved. */
+    private fun isRestorable(pkg: String): Boolean {
+        if (pkg == applicationContext.packageName || pkg == AutoSwitchBack.YT_MUSIC_PKG) return true
+        restorableCache[pkg]?.let { return it }
+        val restorable = applicationContext.packageManager.getLaunchIntentForPackage(pkg) != null
+        restorableCache[pkg] = restorable
+        if (!restorable) DiagnosticLog.i(TAG, "ignoring non-app foreground pkg=$pkg (no launcher)")
+        return restorable
     }
 
     private fun fireSwitchBack() {
