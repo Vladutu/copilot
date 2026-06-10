@@ -1,5 +1,6 @@
 package com.vladutu.copilot
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
@@ -65,6 +66,9 @@ class MainActivity : ComponentActivity() {
     // second, synthetic copy from a nameless device (src=0x101) for
     // DPAD_CENTER / BACK / BUTTON_1 — without filtering, every knob press and
     // every back press would fire twice. Drop the synthetic copy.
+    // RestrictedApi is a lint false positive: androidx.core marks dispatchKeyEvent
+    // @RestrictTo, but overriding it in an Activity is normal and supported.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (isSyntheticDuplicate(event)) return true
         return super.dispatchKeyEvent(event)
