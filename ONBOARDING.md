@@ -10,8 +10,8 @@ Sideload `app/build/outputs/apk/debug/app-debug.apk` onto the box.
 
 ## 2. Open Copilot once
 
-Android does not deliver broadcasts (including `BOOT_COMPLETED`) to an app that
-has never been opened by a human. Tap the icon.
+Android keeps an app that has never been opened by a human in a stopped state
+(no services, no broadcasts). Tap the icon.
 
 ## 3. Grant *Display over other apps*
 

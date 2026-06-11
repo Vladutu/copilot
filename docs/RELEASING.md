@@ -14,7 +14,7 @@ signed release with no extra setup.
 > **Security note (deliberate choice):** the signing key and its password are committed.
 > The password is therefore not a secret. Anyone with read access to this repo can build
 > an APK that installs as a legitimate *update* over an installed Copilot and inherits its
-> granted permissions (overlay, accessibility, boot launch). Keep the repo private and keep
+> granted permissions (overlay, accessibility). Keep the repo private and keep
 > the Obtainium PAT read-only. To rotate the key you must uninstall/reinstall on every device.
 
 ## Cut a release

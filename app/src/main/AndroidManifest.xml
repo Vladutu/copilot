@@ -19,7 +19,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".CopilotApp"
@@ -50,11 +49,6 @@
             android:exported="false" />
 
         <service
-            android:name=".boot.BootLaunchService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
-
-        <service
             android:name=".bubble.BubbleService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
@@ -75,16 +69,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_back_grabber" />
         </service>
-
-        <receiver
-            android:name=".boot.BootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
 
     </application>
 
