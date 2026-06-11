@@ -18,13 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.theme.PilotOk
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @Composable
 fun StatusPill(state: UiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -33,8 +33,11 @@ fun StatusPill(state: UiState, onClick: () -> Unit, modifier: Modifier = Modifie
         is ConnState.Reconnecting -> MaterialTheme.colorScheme.primary
         is ConnState.Error -> MaterialTheme.colorScheme.error
     }
+    // LocalConfiguration is an observable locale source, unlike Locale.getDefault()
+    // (NonObservableLocale lint error since Compose UI 1.9).
+    val locale = LocalConfiguration.current.locales[0]
     val lastTime = state.recent.firstOrNull()?.timeSec?.let {
-        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it * 1000))
+        SimpleDateFormat("HH:mm", locale).format(Date(it * 1000))
     }
 
     Row(

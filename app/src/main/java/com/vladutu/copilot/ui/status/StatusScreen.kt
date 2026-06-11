@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.config.Config
@@ -29,7 +30,6 @@ import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.theme.PilotOk
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import kotlin.math.abs
 
 @Composable
@@ -112,7 +112,10 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
 
 @Composable
 private fun EventRow(event: RecentEvent) {
-    val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    // LocalConfiguration is an observable locale source, unlike Locale.getDefault()
+    // (NonObservableLocale lint error since Compose UI 1.9).
+    val locale = LocalConfiguration.current.locales[0]
+    val time = SimpleDateFormat("HH:mm:ss", locale)
         .format(Date(event.timeSec * 1000))
     Text(
         text = "$time  ${event.text}",
