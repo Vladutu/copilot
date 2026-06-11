@@ -91,6 +91,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.newpipe.extractor)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

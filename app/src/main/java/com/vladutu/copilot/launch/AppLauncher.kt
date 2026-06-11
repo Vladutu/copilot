@@ -20,12 +20,15 @@ class AppLauncher(private val context: Context) {
     /** Entry point for Pilot-driven launches via ListenerService. */
     fun launch(msg: Message): Result =
         if (msg.cmd == "radio") launchRadio(msg.url, msg.title)
-        else launchUrl(msg.cmd, msg.form, msg.url)
+        else launchUrl(msg.cmd, msg.url)
 
     /** Entry point for UI-driven re-plays from a saved tile. */
     fun replay(item: SavedItem): Result =
         if (item.form == Form.RADIO) launchRadio(item.url, item.title)
-        else launchUrl(cmdForForm(item.form), item.form, item.url)
+        else launchUrl(cmdForForm(item.form), item.url)
+
+    /** Entry point for Discover-driven launches (found playlist or radio mix). */
+    fun launchYtMusic(url: String): Result = launchUrl("ytmusic", url)
 
     /** Open Waze app (no nav target). */
     fun openWazeApp(): Result {
@@ -47,7 +50,7 @@ class AppLauncher(private val context: Context) {
         Form.RADIO -> "radio"
     }
 
-    private fun launchUrl(cmd: String, form: Form, url: String): Result {
+    private fun launchUrl(cmd: String, url: String): Result {
         // Maps share URLs (maps.app.goo.gl/...) are Firebase App Links — Maps' package
         // doesn't claim them in intent-filters, only via verified App Links at the OS
         // resolver level. So for cmd=maps we leave the package unset and let Android

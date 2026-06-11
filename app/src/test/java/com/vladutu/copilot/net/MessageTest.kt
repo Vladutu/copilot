@@ -158,4 +158,37 @@ class MessageTest {
         assertTrue(res is ParseResult.Rejected)
         assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
     }
+
+    @Test fun `accepts category message`() {
+        val body = """{"v":3,"ts":$now,"cmd":"category","form":"category","title":"Workout"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Category)
+        assertEquals("Workout", (res as ParseResult.Category).keyword)
+    }
+
+    @Test fun `trims category keyword`() {
+        val body = """{"v":3,"ts":$now,"cmd":"category","form":"category","title":"  Chill  "}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertEquals("Chill", (res as ParseResult.Category).keyword)
+    }
+
+    @Test fun `rejects category without title`() {
+        val body = """{"v":3,"ts":$now,"cmd":"category","form":"category"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("missing category title", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects category with mismatched form`() {
+        val body = """{"v":3,"ts":$now,"cmd":"category","form":"song","title":"Workout"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects stale category`() {
+        val body = """{"v":3,"ts":${now - 120},"cmd":"category","form":"category","title":"Workout"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Rejected)
+    }
 }

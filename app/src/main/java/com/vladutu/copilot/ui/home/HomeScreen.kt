@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -35,9 +36,9 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.service.UiState
 
-// Waze + Maps + Playlists + Songs + Places + Radio. Knob walks all six.
-private const val TILE_COUNT = 6
-private const val MEDIA_COLUMNS = 2
+// Waze + Maps + Playlists + Songs + Discover + Places + Radio. Knob walks all seven.
+private const val TILE_COUNT = 7
+private const val MEDIA_COLUMNS = 3
 
 private data class MediaTile(val labelRes: Int, val icon: ImageVector, val onClick: () -> Unit)
 
@@ -48,6 +49,7 @@ fun HomeScreen(
     onOpenMaps: () -> Unit,
     onOpenPlaylists: () -> Unit,
     onOpenSongs: () -> Unit,
+    onOpenDiscover: () -> Unit,
     onOpenDestinations: () -> Unit,
     onOpenRadio: () -> Unit,
     onOpenStatus: () -> Unit,
@@ -55,18 +57,19 @@ fun HomeScreen(
 ) {
     BackHandler(onBack = onBackFromHome)
 
-    // Knob twist (DPAD_LEFT/RIGHT) walks the six tiles linearly in reading order:
-    // Waze → Maps → Playlists → Songs → Places → Radio. StatusPill is touch-only.
+    // Knob twist (DPAD_LEFT/RIGHT) walks the seven tiles linearly in reading order:
+    // Waze → Maps → Playlists → Songs → Discover → Places → Radio. StatusPill is touch-only.
     val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
     var focusedIndex by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusedIndex) {
         runCatching { tileFocus[focusedIndex].requestFocus() }
     }
 
-    // Media tiles (indices 2..5). Order must match the knob reading order above.
+    // Media tiles (indices 2..6). Order must match the knob reading order above.
     val mediaTiles = listOf(
         MediaTile(R.string.home_playlists, Icons.Filled.PlaylistPlay, onOpenPlaylists),
         MediaTile(R.string.home_songs, Icons.Filled.MusicNote, onOpenSongs),
+        MediaTile(R.string.home_discover, Icons.Filled.Explore, onOpenDiscover),
         MediaTile(R.string.home_destinations, Icons.Filled.Place, onOpenDestinations),
         MediaTile(R.string.home_radio, Icons.Filled.Radio, onOpenRadio),
     )
@@ -124,10 +127,10 @@ fun HomeScreen(
                 fallbackRes = R.drawable.ic_map_pin,
             )
         }
-        // Media tiles — 2-column grid (Playlists/Songs, then Places/Radio), so
-        // the whole home is a uniform 2-wide grid with the Waze/Maps row above.
-        // Each row keeps weight 1f so tile size stays consistent; trailing slots
-        // in a partial row are empty placeholders so tiles stay grid-aligned.
+        // Media tiles — 3-column grid (music row: Playlists/Songs/Discover, then
+        // Places/Radio) under the 2-wide Waze/Maps row. Each row keeps weight 1f
+        // so tile size stays consistent; trailing slots in a partial row are empty
+        // placeholders so tiles stay grid-aligned.
         mediaTiles.chunked(MEDIA_COLUMNS).forEachIndexed { rowIndex, rowTiles ->
             Row(
                 modifier = Modifier.weight(1f).fillMaxSize(),

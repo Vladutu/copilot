@@ -116,6 +116,10 @@ class ListenerService : Service() {
                     }
                     appendRecent(text, ok = ok, skewSec = result.skewSec)
                 }
+                is ParseResult.Category -> {
+                    app.locator.categoryStore.add(result.keyword)
+                    appendRecent("✚ category · ${result.keyword}", ok = true, skewSec = result.skewSec)
+                }
                 is ParseResult.Rejected -> {
                     appendRecent("✗ ${result.reason}", ok = false, skewSec = result.skewSec)
                 }

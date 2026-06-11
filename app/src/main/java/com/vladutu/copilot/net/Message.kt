@@ -56,6 +56,17 @@ data class Message(
             if (abs(skew) > maxAgeSec) return ParseResult.Rejected("stale (${skew}s)", skew)
 
             val cmd = body.optString("cmd")
+
+            // Category sync (Discover): config, not a launch command. No url; title
+            // carries the keyword. Staleness still applies — delivery is live-only
+            // by design; Pilot offers one-tap re-send for the car-was-off case.
+            if (cmd == "category") {
+                if (body.optString("form") != "category") return ParseResult.Rejected("cmd/form mismatch", skew)
+                val keyword = body.optString("title").trim()
+                if (keyword.isEmpty()) return ParseResult.Rejected("missing category title", skew)
+                return ParseResult.Category(keyword, skew)
+            }
+
             if (cmd !in KNOWN_CMDS) return ParseResult.Rejected("unknown cmd=$cmd", skew)
 
             val form = Form.fromWire(body.optString("form").takeIf { it.isNotBlank() })
@@ -106,6 +117,9 @@ sealed class ParseResult {
     object Skipped : ParseResult()
     data class Rejected(val reason: String, val skewSec: Long? = null) : ParseResult()
     data class Accepted(val message: Message, val skewSec: Long) : ParseResult()
+
+    /** A Discover keyword to store — config sync, not an app launch. */
+    data class Category(val keyword: String, val skewSec: Long) : ParseResult()
 }
 
 /**

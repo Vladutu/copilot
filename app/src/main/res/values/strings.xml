@@ -10,11 +10,17 @@
     <string name="home_songs">Songs</string>
     <string name="home_destinations">Places</string>
     <string name="home_radio">Radio</string>
+    <string name="home_discover">Discover</string>
     <string name="back_home">Home</string>
     <string name="empty_playlists">Send a playlist from Pilot to fill this list</string>
     <string name="empty_songs">Send a song from Pilot to fill this list</string>
     <string name="empty_destinations">Send a destination from Pilot to fill this list</string>
     <string name="empty_radio">Send a station from Pilot to fill this list</string>
+    <string name="empty_discover">Send categories from Pilot to fill Discover</string>
+    <string name="discover_browse_failed">Search failed</string>
+    <string name="discover_retry">Retry</string>
+    <string name="discover_no_results">Nothing found for this category</string>
+    <string name="discover_mix_failed">No mix found — try again</string>
     <string name="confirm_delete_title">Remove?</string>
     <string name="confirm_delete_message">Remove \"%1$s\"?</string>
     <string name="confirm_delete_yes">Remove</string>

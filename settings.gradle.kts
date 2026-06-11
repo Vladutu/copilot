@@ -17,6 +17,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // NewPipeExtractor (and its nanojson fork) is published via JitPack only.
+        maven("https://jitpack.io") {
+            content { includeGroupByRegex("com\\.github\\.TeamNewPipe.*") }
+        }
     }
 }
 

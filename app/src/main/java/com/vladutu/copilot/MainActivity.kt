@@ -2,6 +2,7 @@ package com.vladutu.copilot
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.widget.Toast
@@ -24,6 +25,8 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.service.ListenerService
 import com.vladutu.copilot.ui.diagnostics.LogsScreen
+import com.vladutu.copilot.ui.discover.BrowseResultsScreen
+import com.vladutu.copilot.ui.discover.DiscoverScreen
 import com.vladutu.copilot.ui.home.HomeScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
@@ -117,6 +120,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onOpenMaps = { launchOrReport(launcher.openMapsApp()) { onLeftToOtherApp() } },
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
+                onOpenDiscover = { nav.navigate("discover") },
                 onOpenDestinations = { nav.navigate("list/destination") },
                 onOpenRadio = { nav.navigate("list/radio") },
                 onOpenStatus = { nav.navigate("status") },
@@ -146,6 +150,34 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                         app.locator.historyRepository.delete(item.form, item.id)
                     }
                 },
+                onBack = { nav.popBackStack() },
+            )
+        }
+
+        composable("discover") {
+            val categories by app.locator.categoryStore.categories()
+                .collectAsStateWithLifecycle(emptyList())
+            DiscoverScreen(
+                categories = categories,
+                repository = app.locator.discoverRepository,
+                launcher = launcher,
+                onBrowse = { keyword -> nav.navigate("discoverBrowse/${Uri.encode(keyword)}") },
+                onDelete = { keyword ->
+                    app.applicationScope.launch { app.locator.categoryStore.delete(keyword) }
+                },
+                onLaunched = onLeftToOtherApp,
+                onBack = { nav.popBackStack() },
+            )
+        }
+
+        composable("discoverBrowse/{keyword}") { entry ->
+            val keyword = entry.arguments?.getString("keyword") ?: return@composable
+            BrowseResultsScreen(
+                keyword = keyword,
+                repository = app.locator.discoverRepository,
+                okHttp = app.locator.okHttp,
+                launcher = launcher,
+                onLaunched = onLeftToOtherApp,
                 onBack = { nav.popBackStack() },
             )
         }
