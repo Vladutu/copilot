@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -89,10 +90,18 @@ fun HomeTile(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when {
-                busy -> CircularProgressIndicator(
+                // Spinner sits centered in the same 96.dp slot the icons use, but
+                // smaller: unlike icon glyphs (which have built-in padding), the
+                // progress ring draws to the very edge of its box and would clip.
+                busy -> Box(
                     modifier = Modifier.size(96.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(56.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 appIcon != null -> Image(
                     bitmap = appIcon.asImageBitmap(),
                     contentDescription = label,
