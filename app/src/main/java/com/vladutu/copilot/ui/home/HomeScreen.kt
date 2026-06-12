@@ -2,19 +2,14 @@ package com.vladutu.copilot.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Radio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -37,57 +31,28 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.service.UiState
 
-// Waze + Maps + Playlists + Songs + Discover + Places + Radio + Top Weekly.
-// Knob walks all eight.
-private const val TILE_COUNT = 8
-private const val MEDIA_COLUMNS = 3
-
-private data class MediaTile(
-    val labelRes: Int,
-    val icon: ImageVector,
-    val onClick: () -> Unit,
-    val busy: Boolean = false,
-)
+// Waze + Maps + Places + Music. Knob walks all four.
+private const val TILE_COUNT = 4
 
 @Composable
 fun HomeScreen(
     state: UiState,
     onOpenWaze: () -> Unit,
     onOpenMaps: () -> Unit,
-    onOpenPlaylists: () -> Unit,
-    onOpenSongs: () -> Unit,
-    onOpenDiscover: () -> Unit,
     onOpenDestinations: () -> Unit,
-    onOpenRadio: () -> Unit,
-    onOpenTopWeekly: () -> Unit,
-    topWeeklyBusy: Boolean,
+    onOpenMusic: () -> Unit,
     onOpenStatus: () -> Unit,
     onBackFromHome: () -> Unit,
 ) {
     BackHandler(onBack = onBackFromHome)
 
-    // Knob twist (DPAD_LEFT/RIGHT) walks the eight tiles linearly in reading order:
-    // Waze → Maps → Playlists → Songs → Discover → Places → Radio → Top Weekly. StatusPill is touch-only.
+    // Knob twist (DPAD_LEFT/RIGHT) walks the four tiles linearly in reading order:
+    // Waze → Maps → Places → Music. StatusPill is touch-only.
     val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
     var focusedIndex by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusedIndex) {
         runCatching { tileFocus[focusedIndex].requestFocus() }
     }
-
-    // Media tiles (indices 2..7). Order must match the knob reading order above.
-    val mediaTiles = listOf(
-        MediaTile(R.string.home_playlists, Icons.Filled.PlaylistPlay, onOpenPlaylists),
-        MediaTile(R.string.home_songs, Icons.Filled.MusicNote, onOpenSongs),
-        MediaTile(R.string.home_discover, Icons.Filled.Explore, onOpenDiscover),
-        MediaTile(R.string.home_destinations, Icons.Filled.Place, onOpenDestinations),
-        MediaTile(R.string.home_radio, Icons.Filled.Radio, onOpenRadio),
-        MediaTile(
-            R.string.home_top_weekly,
-            Icons.AutoMirrored.Filled.TrendingUp,
-            onOpenTopWeekly,
-            busy = topWeeklyBusy,
-        ),
-    )
 
     Column(
         modifier = Modifier
@@ -122,7 +87,7 @@ fun HomeScreen(
         ) {
             StatusPill(state = state, onClick = onOpenStatus)
         }
-        // Top row — outbound nav apps (2 tiles, indices 0..1).
+        // Top row — outbound nav apps (indices 0..1).
         Row(
             modifier = Modifier.weight(1f).fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -142,32 +107,23 @@ fun HomeScreen(
                 fallbackRes = R.drawable.ic_map_pin,
             )
         }
-        // Media tiles — 3-column grid (Playlists/Songs/Discover, then
-        // Places/Radio/Top Weekly) under the 2-wide Waze/Maps row. Each row keeps
-        // weight 1f so tile size stays consistent; trailing slots in a future
-        // partial row are empty placeholders so tiles stay grid-aligned.
-        mediaTiles.chunked(MEDIA_COLUMNS).forEachIndexed { rowIndex, rowTiles ->
-            Row(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                for (col in 0 until MEDIA_COLUMNS) {
-                    val tile = rowTiles.getOrNull(col)
-                    if (tile != null) {
-                        // Global tile index: 2 (after Waze/Maps) + position in media list.
-                        val globalIndex = 2 + rowIndex * MEDIA_COLUMNS + col
-                        HomeTile(
-                            modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[globalIndex]),
-                            label = stringResource(tile.labelRes),
-                            onClick = tile.onClick,
-                            fallbackIcon = tile.icon,
-                            busy = tile.busy,
-                        )
-                    } else {
-                        Box(modifier = Modifier.weight(1f).fillMaxSize())
-                    }
-                }
-            }
+        // Bottom row — Places + the Music hub page (indices 2..3).
+        Row(
+            modifier = Modifier.weight(1f).fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[2]),
+                label = stringResource(R.string.home_destinations),
+                onClick = onOpenDestinations,
+                fallbackIcon = Icons.Filled.Place,
+            )
+            HomeTile(
+                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
+                label = stringResource(R.string.home_music),
+                onClick = onOpenMusic,
+                fallbackIcon = Icons.Filled.LibraryMusic,
+            )
         }
     }
 }

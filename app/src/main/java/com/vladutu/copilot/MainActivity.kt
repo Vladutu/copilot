@@ -32,6 +32,7 @@ import com.vladutu.copilot.ui.discover.BrowseResultsScreen
 import com.vladutu.copilot.ui.discover.DiscoverScreen
 import com.vladutu.copilot.ui.home.HomeScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
+import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
@@ -117,23 +118,30 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            HomeScreen(
+                state = uiState,
+                onOpenWaze = { launchOrReport(launcher.openWazeApp()) { onLeftToOtherApp() } },
+                onOpenMaps = { launchOrReport(launcher.openMapsApp()) { onLeftToOtherApp() } },
+                onOpenDestinations = { nav.navigate("list/destination") },
+                onOpenMusic = { nav.navigate("music") },
+                onOpenStatus = { nav.navigate("status") },
+                onBackFromHome = onLeftToOtherApp,
+            )
+        }
+
+        composable("music") {
             val scope = rememberCoroutineScope()
             // Tap → chart fetch + queue mint (1-3 s) → YT Music. Busy guards re-taps
             // and drives the tile's spinner; the repository never throws (it falls
             // back to the US chart playlist), so only the launch itself can fail.
             // Deliberate: leaving Copilot during the busy window doesn't cancel the
             // launch — music still starts when ready, same as a Pilot-driven launch
-            // landing while navigating.
+            // landing while navigating. Knob-BACK does cancel it: popping this route
+            // disposes the scope mid-fetch, which is the right call for a back-out.
             var topWeeklyBusy by remember { mutableStateOf(false) }
-            HomeScreen(
-                state = uiState,
-                onOpenWaze = { launchOrReport(launcher.openWazeApp()) { onLeftToOtherApp() } },
-                onOpenMaps = { launchOrReport(launcher.openMapsApp()) { onLeftToOtherApp() } },
+            MusicScreen(
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
-                onOpenDiscover = { nav.navigate("discover") },
-                onOpenDestinations = { nav.navigate("list/destination") },
-                onOpenRadio = { nav.navigate("list/radio") },
                 onOpenTopWeekly = {
                     if (!topWeeklyBusy) {
                         topWeeklyBusy = true
@@ -148,8 +156,9 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                     }
                 },
                 topWeeklyBusy = topWeeklyBusy,
-                onOpenStatus = { nav.navigate("status") },
-                onBackFromHome = onLeftToOtherApp,
+                onOpenDiscover = { nav.navigate("discover") },
+                onOpenRadio = { nav.navigate("list/radio") },
+                onBack = { nav.popBackStack() },
             )
         }
 
