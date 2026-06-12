@@ -32,7 +32,7 @@ import com.vladutu.copilot.ui.ScreenHeader
 import kotlinx.coroutines.launch
 
 /**
- * Discover home: one split tile per category (see [CategoryTile]). Categories are
+ * Discover home: one tile per category (see [CategoryTile]). Categories are
  * authored in Pilot; here they can only be used or deleted. Nothing on this screen
  * writes to history — discovery is ephemeral by design (spec 2026-06-11-discover).
  */
