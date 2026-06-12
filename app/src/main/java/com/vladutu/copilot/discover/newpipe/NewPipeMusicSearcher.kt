@@ -73,7 +73,7 @@ class NewPipeMusicSearcher(private val okHttp: OkHttpClient) : MusicSearcher {
             ?.takeIf { it.isNotEmpty() }
     }
 
-    private companion object {
+    internal companion object {
         @Volatile private var initialized = false
 
         /** Lazy, idempotent NewPipe.init — keeps even init knowledge out of CopilotApp. */

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,6 +55,7 @@ fun HomeTile(
     @DrawableRes fallbackRes: Int? = null,
     fallbackIcon: ImageVector? = null,
     iconTint: Color? = null,
+    busy: Boolean = false,
 ) {
     val context = LocalContext.current
     val appIcon = remember(packageName) {
@@ -87,6 +89,10 @@ fun HomeTile(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when {
+                busy -> CircularProgressIndicator(
+                    modifier = Modifier.size(96.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 appIcon != null -> Image(
                     bitmap = appIcon.asImageBitmap(),
                     contentDescription = label,

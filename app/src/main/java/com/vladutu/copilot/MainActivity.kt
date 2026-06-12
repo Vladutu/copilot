@@ -13,7 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -114,6 +117,14 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            val scope = rememberCoroutineScope()
+            // Tap → chart fetch + queue mint (1-3 s) → YT Music. Busy guards re-taps
+            // and drives the tile's spinner; the repository never throws (it falls
+            // back to the US chart playlist), so only the launch itself can fail.
+            // Deliberate: leaving Copilot during the busy window doesn't cancel the
+            // launch — music still starts when ready, same as a Pilot-driven launch
+            // landing while navigating.
+            var topWeeklyBusy by remember { mutableStateOf(false) }
             HomeScreen(
                 state = uiState,
                 onOpenWaze = { launchOrReport(launcher.openWazeApp()) { onLeftToOtherApp() } },
@@ -123,6 +134,20 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onOpenDiscover = { nav.navigate("discover") },
                 onOpenDestinations = { nav.navigate("list/destination") },
                 onOpenRadio = { nav.navigate("list/radio") },
+                onOpenTopWeekly = {
+                    if (!topWeeklyBusy) {
+                        topWeeklyBusy = true
+                        scope.launch {
+                            try {
+                                val url = app.locator.chartsRepository.topWeeklyLaunchUrl()
+                                launchOrReport(launcher.launchYtMusic(url)) { onLeftToOtherApp() }
+                            } finally {
+                                topWeeklyBusy = false
+                            }
+                        }
+                    }
+                },
+                topWeeklyBusy = topWeeklyBusy,
                 onOpenStatus = { nav.navigate("status") },
                 onBackFromHome = onLeftToOtherApp,
             )
