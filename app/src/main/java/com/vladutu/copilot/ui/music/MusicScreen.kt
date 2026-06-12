@@ -1,6 +1,5 @@
 package com.vladutu.copilot.ui.music
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +30,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
+import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.home.HomeTile
 
 // Playlists + Songs + Top Weekly + Discover + Radio. Knob walks all five;
@@ -55,8 +55,6 @@ fun MusicScreen(
     onOpenRadio: () -> Unit,
     onBack: () -> Unit,
 ) {
-    BackHandler(onBack = onBack)
-
     // Knob twist (DPAD_LEFT/RIGHT) walks the five tiles linearly in reading order:
     // Playlists → Songs → Top Weekly → Discover → Radio.
     val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
@@ -82,7 +80,7 @@ fun MusicScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(16.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 // Always consume Left/Right so focusedIndex stays the single source
@@ -104,6 +102,10 @@ fun MusicScreen(
             },
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        // Standard sub-screen header: back button + centered title. Touch-only,
+        // not a knob stop — knob BACK pops the route the same way.
+        ScreenHeader(title = stringResource(R.string.home_music), onBack = onBack)
+
         // 3-column grid: Playlists/Songs/Top Weekly, then Discover/Radio/(empty).
         // Each row keeps weight 1f so tile size stays consistent; the trailing
         // slot in the partial row is an empty placeholder so tiles stay
