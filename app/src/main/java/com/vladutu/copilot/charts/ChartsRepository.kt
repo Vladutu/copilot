@@ -1,6 +1,7 @@
 package com.vladutu.copilot.charts
 
 import com.vladutu.copilot.diagnostics.DiagnosticLog
+import com.vladutu.copilot.discover.YtMusicUrls
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -12,7 +13,7 @@ import kotlinx.coroutines.coroutineScope
  *
  * Never throws: any failure — one chart, both charts, or the minting call — degrades
  * stepwise so the tile always plays something, in the worst case the US chart playlist
- * launched directly (in chart order, hence no &shuffle=1 on the fallback URL).
+ * launched directly (still shuffled, to match the minted-queue experience).
  */
 class ChartsRepository(
     private val fetcher: ChartFetcher,
@@ -55,6 +56,6 @@ class ChartsRepository(
         const val GB_PLAYLIST_ID = "PL4fGSI1pDJn6_f5P3MnzXg9l3GDfnSlXa"
         const val US_CHART_URL = "https://www.youtube.com/playlist?list=$US_PLAYLIST_ID"
         const val GB_CHART_URL = "https://www.youtube.com/playlist?list=$GB_PLAYLIST_ID"
-        const val FALLBACK_URL = "https://music.youtube.com/watch?list=$US_PLAYLIST_ID"
+        val FALLBACK_URL = YtMusicUrls.playlist(US_PLAYLIST_ID)
     }
 }

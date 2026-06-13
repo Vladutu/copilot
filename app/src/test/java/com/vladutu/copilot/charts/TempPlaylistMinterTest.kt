@@ -34,7 +34,7 @@ class TempPlaylistMinterTest {
                 .setHeader("Location", "https://www.youtube.com/watch?v=aaa&list=TLGGtest123"),
         )
         val url = minter.mint(listOf("aaa", "bbb", "ccc"))
-        assertEquals("https://music.youtube.com/watch?v=aaa&list=TLGGtest123", url)
+        assertEquals("https://music.youtube.com/watch?list=TLGGtest123&shuffle=1", url)
         val recorded = server.takeRequest()
         assertEquals("/watch_videos?video_ids=aaa,bbb,ccc", recorded.path)
     }

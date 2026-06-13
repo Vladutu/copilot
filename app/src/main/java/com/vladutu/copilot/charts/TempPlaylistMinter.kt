@@ -1,5 +1,6 @@
 package com.vladutu.copilot.charts
 
+import com.vladutu.copilot.discover.YtMusicUrls
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +23,7 @@ class TempPlaylistMinter(
 
     private val client = okHttp.newBuilder().followRedirects(false).build()
 
-    /** Returns a music.youtube.com URL that plays [videoIds] in order. */
+    /** Returns a music.youtube.com URL that plays [videoIds] shuffled (same form Discover uses). */
     override suspend fun mint(videoIds: List<String>): String = withContext(Dispatchers.IO) {
         require(videoIds.isNotEmpty()) { "no video ids to mint" }
         val request = Request.Builder()
@@ -45,7 +46,7 @@ class TempPlaylistMinter(
         } catch (e: Exception) {
             throw ChartsException("watch_videos call failed: ${e.message}", e)
         }
-        "https://music.youtube.com/watch?v=${videoIds.first()}&list=$listId"
+        YtMusicUrls.playlist(listId)
     }
 
     /** Same JVM-pure query-param extractor as NewPipeMusicSearcher (no android.net.Uri). */
