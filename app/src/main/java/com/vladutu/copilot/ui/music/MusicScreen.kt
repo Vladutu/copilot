@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Radio
@@ -33,9 +34,8 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.home.HomeTile
 
-// Playlists + Songs + Top Weekly + Discover + Radio. Knob walks all five;
-// the empty sixth grid slot is a placeholder, not a stop.
-private const val TILE_COUNT = 5
+// Playlists + Songs + Top Weekly + Discover + Radio + Liked; knob walks all six.
+private const val TILE_COUNT = 6
 private const val COLUMNS = 3
 
 private data class MusicTile(
@@ -53,10 +53,11 @@ fun MusicScreen(
     topWeeklyBusy: Boolean,
     onOpenDiscover: () -> Unit,
     onOpenRadio: () -> Unit,
+    onOpenLiked: () -> Unit,
     onBack: () -> Unit,
 ) {
-    // Knob twist (DPAD_LEFT/RIGHT) walks the five tiles linearly in reading order:
-    // Playlists → Songs → Top Weekly → Discover → Radio.
+    // Knob twist (DPAD_LEFT/RIGHT) walks the six tiles linearly in reading order:
+    // Playlists → Songs → Top Weekly → Discover → Radio → Liked.
     val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
     var focusedIndex by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusedIndex) {
@@ -75,6 +76,7 @@ fun MusicScreen(
         ),
         MusicTile(R.string.home_discover, Icons.Filled.Explore, onOpenDiscover),
         MusicTile(R.string.home_radio, Icons.Filled.Radio, onOpenRadio),
+        MusicTile(R.string.home_liked, Icons.Filled.Favorite, onOpenLiked),
     )
 
     Column(
@@ -106,10 +108,9 @@ fun MusicScreen(
         // not a knob stop — knob BACK pops the route the same way.
         ScreenHeader(title = stringResource(R.string.home_music), onBack = onBack)
 
-        // 3-column grid: Playlists/Songs/Top Weekly, then Discover/Radio/(empty).
-        // Each row keeps weight 1f so tile size stays consistent; the trailing
-        // slot in the partial row is an empty placeholder so tiles stay
-        // grid-aligned.
+        // 3-column grid: Playlists/Songs/Top Weekly, then Discover/Radio/Liked.
+        // Each row keeps weight 1f so tile size stays consistent; six tiles fill
+        // the 3×2 grid exactly.
         tiles.chunked(COLUMNS).forEachIndexed { rowIndex, rowTiles ->
             Row(
                 modifier = Modifier.weight(1f).fillMaxSize(),

@@ -70,6 +70,16 @@
                 android:resource="@xml/accessibility_back_grabber" />
         </service>
 
+        <service
+            android:name=".nowplaying.MediaListenerService"
+            android:exported="true"
+            android:label="@string/liked_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

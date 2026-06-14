@@ -32,4 +32,13 @@
     <string name="grant">Grant</string>
     <string name="back_grabber_label">Copilot Back-Grabber</string>
     <string name="back_grabber_description">Long-press the BMW back button to bring Copilot to the front while the Copilot bubble is showing. Short BACK presses still work normally for Waze and YouTube Music.</string>
+    <string name="home_liked">Liked</string>
+    <string name="empty_liked">No liked songs yet</string>
+    <string name="like_song">Like this song</string>
+    <string name="liked_saved">Saved</string>
+    <string name="clear_all">Clear all</string>
+    <string name="clear_all_title">Clear liked songs?</string>
+    <string name="clear_all_message">This removes every song from your Liked list.</string>
+    <string name="grant_now_playing_access">Enable now-playing access</string>
+    <string name="liked_listener_label">Copilot now-playing</string>
 </resources>

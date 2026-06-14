@@ -1,15 +1,22 @@
 package com.vladutu.copilot.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,17 +33,18 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.service.UiState
-
-// Waze + Maps + Places + Music. Knob walks all four.
-private const val TILE_COUNT = 4
 
 @Composable
 fun HomeScreen(
     state: UiState,
+    nowPlaying: NowPlaying?,
+    onLike: () -> Unit,
     onOpenWaze: () -> Unit,
     onOpenMaps: () -> Unit,
     onOpenDestinations: () -> Unit,
@@ -46,12 +54,20 @@ fun HomeScreen(
 ) {
     BackHandler(onBack = onBackFromHome)
 
-    // Knob twist (DPAD_LEFT/RIGHT) walks the four tiles linearly in reading order:
-    // Waze → Maps → Places → Music. StatusPill is touch-only.
-    val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
+    val songPlaying = nowPlaying != null
+    val tileCount = HomeKnob.tileCount(songPlaying)
+    // Four fixed tiles + (optional) heart as the last stop.
+    val tileFocus = remember { List(HomeKnob.BASE_TILES) { FocusRequester() } }
+    val heartFocus = remember { FocusRequester() }
     var focusedIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(focusedIndex) {
-        runCatching { tileFocus[focusedIndex].requestFocus() }
+
+    // If the song stops while the heart was focused, clamp back onto the last tile.
+    LaunchedEffect(tileCount) {
+        focusedIndex = HomeKnob.clampFocus(focusedIndex, tileCount)
+    }
+    LaunchedEffect(focusedIndex, tileCount) {
+        val target = if (focusedIndex < HomeKnob.BASE_TILES) tileFocus[focusedIndex] else heartFocus
+        runCatching { target.requestFocus() }
     }
 
     Column(
@@ -60,14 +76,9 @@ fun HomeScreen(
             .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                // Always consume Left/Right so focusedIndex stays the single source
-                // of truth. Returning false at the ends would hand the event to
-                // Compose's default directional focus search, which moves the
-                // on-screen focus independently of focusedIndex — the two desync and
-                // the knob appears to bounce back into earlier tiles. Clamp instead.
                 when (event.key) {
                     Key.DirectionRight -> {
-                        if (focusedIndex < TILE_COUNT - 1) focusedIndex++
+                        if (focusedIndex < tileCount - 1) focusedIndex++
                         true
                     }
                     Key.DirectionLeft -> {
@@ -79,14 +90,44 @@ fun HomeScreen(
             },
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header strip — pill flush right.
+        // Header strip: now-playing + heart on the left (only when a song is playing),
+        // status pill flush right.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (nowPlaying != null) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = nowPlayingLabel(nowPlaying),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = stringResource(R.string.like_song),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .focusRequester(heartFocus)
+                            .clickable(onClick = onLike)
+                            .padding(8.dp),
+                    )
+                }
+            } else {
+                // keep the pill flush-right when nothing is playing
+                Box(modifier = Modifier.weight(1f))
+            }
             StatusPill(state = state, onClick = onOpenStatus)
         }
+
         // Top row — outbound nav apps (indices 0..1).
         Row(
             modifier = Modifier.weight(1f).fillMaxSize(),
@@ -107,7 +148,7 @@ fun HomeScreen(
                 fallbackRes = R.drawable.ic_map_pin,
             )
         }
-        // Bottom row — Places + the Music hub page (indices 2..3).
+        // Bottom row — Places + Music (indices 2..3).
         Row(
             modifier = Modifier.weight(1f).fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -127,3 +168,6 @@ fun HomeScreen(
         }
     }
 }
+
+private fun nowPlayingLabel(np: NowPlaying): String =
+    if (np.artist.isNullOrBlank()) "♪ ${np.title}" else "♪ ${np.title} — ${np.artist}"

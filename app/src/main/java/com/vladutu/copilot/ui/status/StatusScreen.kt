@@ -20,11 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.BuildConfig
+import com.vladutu.copilot.R
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.permissions.PermissionHelpers
 import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.theme.PilotOk
@@ -107,6 +111,14 @@ fun StatusScreen(state: UiState, onBack: () -> Unit, onOpenLogs: () -> Unit) {
         )
 
         OutlinedButton(onClick = onOpenLogs) { Text("Diagnostic log") }
+
+        // Now-playing (notification access) grant — shown only while access is missing.
+        val ctx = LocalContext.current
+        if (!PermissionHelpers.isNotificationAccessGranted(ctx)) {
+            OutlinedButton(onClick = { PermissionHelpers.openNotificationAccessSettings(ctx) }) {
+                Text(stringResource(R.string.grant_now_playing_access))
+            }
+        }
     }
 }
 

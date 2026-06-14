@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,11 +27,13 @@ import androidx.navigation.compose.rememberNavController
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.nowplaying.MediaListenerService
 import com.vladutu.copilot.service.ListenerService
 import com.vladutu.copilot.ui.diagnostics.LogsScreen
 import com.vladutu.copilot.ui.discover.BrowseResultsScreen
 import com.vladutu.copilot.ui.discover.DiscoverScreen
 import com.vladutu.copilot.ui.home.HomeScreen
+import com.vladutu.copilot.ui.liked.LikedSongsScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
 import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
@@ -118,8 +121,17 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            val nowPlaying by MediaListenerService.nowPlaying.collectAsStateWithLifecycle()
+            val savedMsg = stringResource(R.string.liked_saved)
             HomeScreen(
                 state = uiState,
+                nowPlaying = nowPlaying,
+                onLike = {
+                    nowPlaying?.let { np ->
+                        app.applicationScope.launch { app.locator.likedSongsRepository.like(np) }
+                        Toast.makeText(context, savedMsg, Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onOpenWaze = { launchOrReport(launcher.openWazeApp()) { onLeftToOtherApp() } },
                 onOpenMaps = { launchOrReport(launcher.openMapsApp()) { onLeftToOtherApp() } },
                 onOpenDestinations = { nav.navigate("list/destination") },
@@ -158,6 +170,22 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 topWeeklyBusy = topWeeklyBusy,
                 onOpenDiscover = { nav.navigate("discover") },
                 onOpenRadio = { nav.navigate("list/radio") },
+                onOpenLiked = { nav.navigate("liked") },
+                onBack = { nav.popBackStack() },
+            )
+        }
+
+        composable("liked") {
+            val liked by app.locator.likedSongsRepository.items()
+                .collectAsStateWithLifecycle(emptyList())
+            LikedSongsScreen(
+                items = liked,
+                onDelete = { song ->
+                    app.applicationScope.launch { app.locator.likedSongsRepository.delete(song) }
+                },
+                onClearAll = {
+                    app.applicationScope.launch { app.locator.likedSongsRepository.clearAll() }
+                },
                 onBack = { nav.popBackStack() },
             )
         }
