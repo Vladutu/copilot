@@ -15,9 +15,13 @@ data class LikedSong(
 ) {
     /** Identity for dedup: title + artist compared trimmed and case-insensitively;
      *  null and blank artist are treated as the same "no artist". */
-    fun sameSongAs(other: LikedSong): Boolean =
-        title.trim().equals(other.title.trim(), ignoreCase = true) &&
-            normArtist(artist) == normArtist(other.artist)
+    fun sameSongAs(other: LikedSong): Boolean = matches(other.title, other.artist)
+
+    /** Same identity rule as [sameSongAs], against a raw title/artist pair — lets the UI
+     *  check whether a NowPlaying track is already in the list without building a LikedSong. */
+    fun matches(title: String, artist: String?): Boolean =
+        this.title.trim().equals(title.trim(), ignoreCase = true) &&
+            normArtist(this.artist) == normArtist(artist)
 
     private fun normArtist(a: String?): String = a?.trim()?.lowercase() ?: ""
 }

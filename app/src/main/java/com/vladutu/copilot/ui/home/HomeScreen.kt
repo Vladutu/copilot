@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ import com.vladutu.copilot.service.UiState
 fun HomeScreen(
     state: UiState,
     nowPlaying: NowPlaying?,
+    isLiked: Boolean,
     onLike: () -> Unit,
     onOpenWaze: () -> Unit,
     onOpenMaps: () -> Unit,
@@ -111,7 +113,7 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     Icon(
-                        imageVector = Icons.Filled.Favorite,
+                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = stringResource(R.string.like_song),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier

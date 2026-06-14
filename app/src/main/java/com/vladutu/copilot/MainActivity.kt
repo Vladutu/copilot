@@ -122,10 +122,13 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
             val nowPlaying by MediaListenerService.nowPlaying.collectAsStateWithLifecycle()
+            val liked by app.locator.likedSongsRepository.items().collectAsStateWithLifecycle(emptyList())
+            val isLiked = nowPlaying?.let { np -> liked.any { it.matches(np.title, np.artist) } } ?: false
             val savedMsg = stringResource(R.string.liked_saved)
             HomeScreen(
                 state = uiState,
                 nowPlaying = nowPlaying,
+                isLiked = isLiked,
                 onLike = {
                     nowPlaying?.let { np ->
                         app.applicationScope.launch { app.locator.likedSongsRepository.like(np) }
