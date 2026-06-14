@@ -1,11 +1,9 @@
 package com.vladutu.copilot.ui.liked
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +11,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -27,24 +25,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.liked.LikedSong
-import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.ScreenHeader
 
+/**
+ * Read-when-stopped memo of liked songs. A plain vertical list (no launch tiles —
+ * nothing here is tappable to play). Manage with two whole-list actions only: Copy
+ * (the list to the clipboard, for sharing off-device via email etc.) and Clear all.
+ * No per-item delete by design.
+ */
 @Composable
 fun LikedSongsScreen(
     items: List<LikedSong>,
-    onDelete: (LikedSong) -> Unit,
     onClearAll: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var pendingDelete by remember { mutableStateOf<LikedSong?>(null) }
+    val context = LocalContext.current
+    val copiedMsg = stringResource(R.string.liked_copied)
     var confirmClear by remember { mutableStateOf(false) }
 
     Column(
@@ -58,43 +59,35 @@ fun LikedSongsScreen(
                 Text(text = stringResource(R.string.empty_liked), style = MaterialTheme.typography.titleLarge)
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+            ) {
+                OutlinedButton(onClick = {
+                    copyToClipboard(context, items)
+                    Toast.makeText(context, copiedMsg, Toast.LENGTH_SHORT).show()
+                }) {
+                    Text(stringResource(R.string.copy_list))
+                }
                 OutlinedButton(onClick = { confirmClear = true }) {
                     Text(stringResource(R.string.clear_all))
                 }
             }
-            KnobPagedGrid(
-                items = items,
-                resetKey = items.firstOrNull()?.let { it.title + "|" + it.artist },
-                modifier = Modifier.weight(1f),
-            ) { item, requesters ->
-                LikedTile(
-                    song = item,
-                    onLongPress = { pendingDelete = item },
-                    modifier = Modifier.fillMaxSize().let { base ->
-                        if (requesters != null) base.focusRequester(requesters[0]) else base
-                    },
-                )
+            // Big, readable rows; "Title - Artist" wraps to the next line when long
+            // (no truncation). Generous spacing between songs.
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                items(items) { song ->
+                    Text(
+                        text = "•  ${songLine(song)}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
-    }
-
-    pendingDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.confirm_delete_title)) },
-            text = { Text(stringResource(R.string.confirm_delete_message, target.title)) },
-            confirmButton = {
-                TextButton(onClick = { onDelete(target); pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_yes))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_no))
-                }
-            },
-        )
     }
 
     if (confirmClear) {
@@ -116,53 +109,12 @@ fun LikedSongsScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun LikedTile(
-    song: LikedSong,
-    onLongPress: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val border = if (isFocused) {
-        BorderStroke(4.dp, MaterialTheme.colorScheme.primary)
-    } else {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-    }
-    Card(
-        // No tap-to-play for liked songs: onClick is a deliberate no-op; only the
-        // long-press (delete) is wired. Same combinedClickable mechanism as SavedTile.
-        modifier = modifier.combinedClickable(
-            interactionSource = interactionSource,
-            indication = LocalIndication.current,
-            onClick = {},
-            onLongClick = onLongPress,
-        ),
-        shape = RoundedCornerShape(16.dp),
-        border = border,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp, lineHeight = 32.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            song.artist?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-        }
-    }
+/** One displayed/copied line: "Title - Artist", or just "Title" when no artist. */
+private fun songLine(song: LikedSong): String =
+    if (song.artist.isNullOrBlank()) song.title else "${song.title} - ${song.artist}"
+
+private fun copyToClipboard(context: Context, items: List<LikedSong>) {
+    val text = items.joinToString("\n") { songLine(it) }
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Liked songs", text))
 }

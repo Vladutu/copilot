@@ -36,6 +36,8 @@
     <string name="empty_liked">No liked songs yet</string>
     <string name="like_song">Like this song</string>
     <string name="liked_saved">Saved</string>
+    <string name="liked_copied">Copied</string>
+    <string name="copy_list">Copy</string>
     <string name="clear_all">Clear all</string>
     <string name="clear_all_title">Clear liked songs?</string>
     <string name="clear_all_message">This removes every song from your Liked list.</string>

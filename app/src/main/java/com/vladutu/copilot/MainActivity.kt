@@ -183,9 +183,6 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(emptyList())
             LikedSongsScreen(
                 items = liked,
-                onDelete = { song ->
-                    app.applicationScope.launch { app.locator.likedSongsRepository.delete(song) }
-                },
                 onClearAll = {
                     app.applicationScope.launch { app.locator.likedSongsRepository.clearAll() }
                 },
