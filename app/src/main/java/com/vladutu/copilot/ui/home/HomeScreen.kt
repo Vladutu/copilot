@@ -1,7 +1,12 @@
 package com.vladutu.copilot.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -61,6 +67,8 @@ fun HomeScreen(
     // Four fixed tiles + (optional) heart as the last stop.
     val tileFocus = remember { List(HomeKnob.BASE_TILES) { FocusRequester() } }
     val heartFocus = remember { FocusRequester() }
+    val heartInteraction = remember { MutableInteractionSource() }
+    val heartFocused by heartInteraction.collectIsFocusedAsState()
     var focusedIndex by remember { mutableIntStateOf(0) }
 
     // If the song stops while the heart was focused, clamp back onto the last tile.
@@ -117,10 +125,19 @@ fun HomeScreen(
                         contentDescription = stringResource(R.string.like_song),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .focusRequester(heartFocus)
-                            .clickable(onClick = onLike)
-                            .padding(8.dp),
+                            .clickable(
+                                interactionSource = heartInteraction,
+                                indication = LocalIndication.current,
+                                onClick = onLike,
+                            )
+                            .border(
+                                width = if (heartFocused) 4.dp else 0.dp,
+                                color = if (heartFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                shape = CircleShape,
+                            )
+                            .padding(10.dp),
                     )
                 }
             } else {
