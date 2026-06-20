@@ -1,22 +1,29 @@
 package com.vladutu.copilot.ui.lists
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
@@ -24,7 +31,11 @@ import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.ui.KnobPagedGrid
+import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun SavedListScreen(
@@ -68,14 +79,12 @@ fun SavedListScreen(
                 resetKey = items.firstOrNull()?.id,
                 modifier = Modifier.weight(1f),
             ) { item, requesters ->
-                SavedTile(
+                SavedRow(
                     item = item,
                     artworkFile = artworkCache.fileFor(item.form, item.id),
+                    focus = requesters?.get(0),
                     onTap = { onTap(item) },
                     onLongPress = { pendingDelete = item },
-                    modifier = Modifier.fillMaxSize().let { base ->
-                        if (requesters != null) base.focusRequester(requesters[0]) else base
-                    },
                 )
             }
         }
@@ -98,4 +107,41 @@ fun SavedListScreen(
             },
         )
     }
+}
+
+@Composable
+private fun SavedRow(
+    item: SavedItem,
+    artworkFile: File,
+    focus: FocusRequester?,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+) {
+    var bitmap by remember(item.id) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(item.id) {
+        if (artworkFile.exists()) {
+            val bmp = withContext(Dispatchers.IO) {
+                runCatching { BitmapFactory.decodeFile(artworkFile.absolutePath) }.getOrNull()
+            }
+            bitmap = bmp?.asImageBitmap()
+        }
+    }
+    MediaRowTile(
+        modifier = Modifier.fillMaxSize(),
+        label = item.title ?: "Untitled · ${item.id.take(8)}",
+        onClick = onTap,
+        onLongPress = onLongPress,
+        focusRequester = focus,
+        thumbnail = bitmap,
+        // Fallback when there is no artwork: form-specific glyph.
+        fallbackIcon = when (item.form) {
+            Form.RADIO -> Icons.Filled.Radio
+            Form.DESTINATION -> Icons.Filled.Place
+            else -> null
+        },
+        fallbackRes = when (item.form) {
+            Form.PLAYLIST, Form.SONG -> R.drawable.ic_music_note
+            else -> null
+        },
+    )
 }

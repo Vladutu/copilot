@@ -1,5 +1,6 @@
 package com.vladutu.copilot.ui.discover
 
+import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,7 +35,10 @@ import com.vladutu.copilot.discover.SearchException
 import com.vladutu.copilot.discover.YtMusicUrls
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.ui.KnobPagedGrid
+import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 private sealed interface BrowseState {
@@ -94,7 +100,7 @@ fun BrowseResultsScreen(
                         resetKey = keyword,
                         modifier = Modifier.weight(1f),
                     ) { playlist, requesters ->
-                        PlaylistTile(
+                        BrowsePlaylistRow(
                             playlist = playlist,
                             okHttp = okHttp,
                             focus = requesters?.get(0),
@@ -132,6 +138,35 @@ private fun RetryBox(onRetry: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun BrowsePlaylistRow(
+    playlist: FoundPlaylist,
+    okHttp: OkHttpClient,
+    focus: FocusRequester?,
+    onTap: () -> Unit,
+) {
+    var bitmap by remember(playlist.playlistId) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(playlist.playlistId) {
+        val url = playlist.thumbnailUrl ?: return@LaunchedEffect
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                okHttp.newCall(okhttp3.Request.Builder().url(url).build()).execute().use { resp ->
+                    if (!resp.isSuccessful) return@runCatching null
+                    resp.body?.bytes()?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                }
+            }.getOrNull()
+        }?.asImageBitmap()
+    }
+    MediaRowTile(
+        modifier = Modifier.fillMaxSize(),
+        label = playlist.title,
+        onClick = onTap,
+        focusRequester = focus,
+        thumbnail = bitmap,
+        fallbackRes = R.drawable.ic_music_note,
+    )
 }
 
 private const val TAG = "DiscoverBrowse"

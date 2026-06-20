@@ -21,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -31,8 +30,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
+import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
-import com.vladutu.copilot.ui.home.HomeTile
 
 // Playlists + Songs + Top Weekly + Discover + Radio + Liked; knob walks all six.
 private const val TILE_COUNT = 6
@@ -120,12 +119,14 @@ fun MusicScreen(
                     val tile = rowTiles.getOrNull(col)
                     if (tile != null) {
                         val globalIndex = rowIndex * COLUMNS + col
-                        HomeTile(
-                            modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[globalIndex]),
+                        MediaRowTile(
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            focusRequester = tileFocus[globalIndex],
                             label = stringResource(tile.labelRes),
                             onClick = tile.onClick,
                             fallbackIcon = tile.icon,
                             busy = tile.busy,
+                            maxLines = 1,
                         )
                     } else {
                         Box(modifier = Modifier.weight(1f).fillMaxSize())

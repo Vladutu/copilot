@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -46,6 +46,7 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.MediaRowTile
 
 @Composable
 fun HomeScreen(
@@ -152,19 +153,23 @@ fun HomeScreen(
             modifier = Modifier.weight(1f).fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            HomeTile(
-                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[0]),
+            MediaRowTile(
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                focusRequester = tileFocus[0],
                 label = stringResource(R.string.home_waze),
                 onClick = onOpenWaze,
                 packageName = AppLauncher.WAZE_PKG,
                 fallbackRes = R.drawable.ic_map_pin,
+                maxLines = 1,
             )
-            HomeTile(
-                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[1]),
+            MediaRowTile(
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                focusRequester = tileFocus[1],
                 label = stringResource(R.string.home_maps),
                 onClick = onOpenMaps,
                 packageName = AppLauncher.MAPS_PKG,
                 fallbackRes = R.drawable.ic_map_pin,
+                maxLines = 1,
             )
         }
         // Bottom row — Places + Music (indices 2..3).
@@ -172,17 +177,21 @@ fun HomeScreen(
             modifier = Modifier.weight(1f).fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            HomeTile(
-                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[2]),
+            MediaRowTile(
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                focusRequester = tileFocus[2],
                 label = stringResource(R.string.home_destinations),
                 onClick = onOpenDestinations,
                 fallbackIcon = Icons.Filled.Place,
+                maxLines = 1,
             )
-            HomeTile(
-                modifier = Modifier.weight(1f).fillMaxSize().focusRequester(tileFocus[3]),
+            MediaRowTile(
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                focusRequester = tileFocus[3],
                 label = stringResource(R.string.home_music),
                 onClick = onOpenMusic,
                 fallbackIcon = Icons.Filled.LibraryMusic,
+                maxLines = 1,
             )
         }
     }
