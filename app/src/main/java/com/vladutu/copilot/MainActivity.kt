@@ -37,6 +37,7 @@ import com.vladutu.copilot.ui.liked.LikedSongsScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
 import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
+import com.vladutu.copilot.ui.settings.SettingsScreen
 import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
 import kotlinx.coroutines.launch
@@ -140,6 +141,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onOpenDestinations = { nav.navigate("list/destination") },
                 onOpenMusic = { nav.navigate("music") },
                 onOpenStatus = { nav.navigate("status") },
+                onOpenSettings = { nav.navigate("settings") },
                 onBackFromHome = onLeftToOtherApp,
             )
         }
@@ -249,7 +251,19 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
             StatusScreen(
                 state = uiState,
                 onBack = { nav.popBackStack() },
+            )
+        }
+
+        composable("settings") {
+            val autoStart by app.locator.settingsStore.autoStartFlow
+                .collectAsStateWithLifecycle(initialValue = false)
+            SettingsScreen(
+                autoStart = autoStart,
+                onAutoStartChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setAutoStart(enabled) }
+                },
                 onOpenLogs = { nav.navigate("logs") },
+                onBack = { nav.popBackStack() },
             )
         }
 

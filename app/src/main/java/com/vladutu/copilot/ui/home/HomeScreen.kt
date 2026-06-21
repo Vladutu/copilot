@@ -20,7 +20,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +61,7 @@ fun HomeScreen(
     onOpenDestinations: () -> Unit,
     onOpenMusic: () -> Unit,
     onOpenStatus: () -> Unit,
+    onOpenSettings: () -> Unit,
     onBackFromHome: () -> Unit,
 ) {
     BackHandler(onBack = onBackFromHome)
@@ -145,7 +148,20 @@ fun HomeScreen(
                 // keep the pill flush-right when nothing is playing
                 Box(modifier = Modifier.weight(1f))
             }
-            StatusPill(state = state, onClick = onOpenStatus)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                StatusPill(state = state, onClick = onOpenStatus)
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.settings_title),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+            }
         }
 
         // Top row — outbound nav apps (indices 0..1).

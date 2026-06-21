@@ -16,12 +16,14 @@ import com.vladutu.copilot.history.HistoryRepository
 import com.vladutu.copilot.history.HistoryStore
 import com.vladutu.copilot.liked.LikedSongStore
 import com.vladutu.copilot.liked.LikedSongsRepository
+import com.vladutu.copilot.settings.SettingsStore
 import okhttp3.OkHttpClient
 
 private val Context.historyDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_history")
 private val Context.bubbleDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_bubble")
 private val Context.discoverDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_discover")
 private val Context.likedDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_liked")
+internal val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_settings")
 
 class ServiceLocator(private val appContext: Context) {
     val okHttp: OkHttpClient by lazy { OkHttpClient() }
@@ -43,6 +45,8 @@ class ServiceLocator(private val appContext: Context) {
     val likedSongsRepository: LikedSongsRepository by lazy {
         LikedSongsRepository(LikedSongStore(appContext.likedDataStore))
     }
+
+    val settingsStore: SettingsStore by lazy { SettingsStore(appContext.settingsDataStore) }
 
     val discoverRepository: DiscoverRepository by lazy {
         // The only line that names the search backend (spec: containment boundary —
