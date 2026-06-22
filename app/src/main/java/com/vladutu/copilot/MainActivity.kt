@@ -1,6 +1,9 @@
 package com.vladutu.copilot
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -248,8 +251,11 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
 
         composable("status") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
+            val topic by app.locator.settingsStore.topicFlow
+                .collectAsStateWithLifecycle(initialValue = null)
             StatusScreen(
                 state = uiState,
+                topic = topic,
                 onBack = { nav.popBackStack() },
             )
         }
@@ -257,10 +263,24 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("settings") {
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val topic by app.locator.settingsStore.topicFlow
+                .collectAsStateWithLifecycle(initialValue = null)
+            val copiedMsg = stringResource(R.string.settings_topic_copied)
             SettingsScreen(
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setAutoStart(enabled) }
+                },
+                topic = topic,
+                onCopyTopic = {
+                    topic?.let { t ->
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Copilot topic", t))
+                        Toast.makeText(context, copiedMsg, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onRegenerate = {
+                    app.applicationScope.launch { app.locator.settingsStore.regenerateTopic() }
                 },
                 onOpenLogs = { nav.navigate("logs") },
                 onBack = { nav.popBackStack() },

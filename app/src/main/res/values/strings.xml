@@ -46,4 +46,16 @@
     <string name="settings_title">Settings</string>
     <string name="settings_autostart_label">Start Copilot when the car turns on</string>
     <string name="settings_diagnostic_log">Diagnostic log</string>
+    <string name="settings_pairing_label">Pairing</string>
+    <string name="settings_topic_none">No topic yet</string>
+    <string name="settings_copy_topic">Copy</string>
+    <string name="settings_topic_copied">Topic copied</string>
+    <string name="settings_show_qr">Show QR code</string>
+    <string name="settings_qr_title">Scan with Pilot</string>
+    <string name="settings_regenerate">Regenerate topic</string>
+    <string name="settings_regenerate_title">Regenerate topic?</string>
+    <string name="settings_regenerate_message">This will disconnect Pilot and Wingman until you re-pair them. Continue?</string>
+    <string name="settings_regenerate_confirm">Regenerate</string>
+    <string name="settings_regenerate_cancel">Cancel</string>
+    <string name="settings_qr_close">Close</string>
 </resources>

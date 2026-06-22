@@ -32,7 +32,7 @@ import java.util.Date
 import kotlin.math.abs
 
 @Composable
-fun StatusScreen(state: UiState, onBack: () -> Unit) {
+fun StatusScreen(state: UiState, topic: String?, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -94,7 +94,7 @@ fun StatusScreen(state: UiState, onBack: () -> Unit) {
         }
 
         Text(
-            text = "topic: ${Config.NTFY_TOPIC.take(16)}…",
+            text = "topic: " + (topic?.take(16)?.plus("…") ?: "—"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

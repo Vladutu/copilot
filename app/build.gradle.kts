@@ -92,6 +92,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.newpipe.extractor)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

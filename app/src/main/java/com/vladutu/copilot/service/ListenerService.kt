@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -66,9 +67,23 @@ class ListenerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private suspend fun runLoop() {
+        val app = applicationContext as CopilotApp
+        val settings = app.locator.settingsStore
+        // Make sure a freshly installed Copilot has a topic before it subscribes.
+        settings.ensureTopic()
+
+        // collectLatest cancels the in-flight subscribe() and starts a new one when the
+        // topic changes (regenerate), so a re-pair takes effect with no app restart.
+        settings.topicFlow.collectLatest { topic ->
+            if (topic == null) return@collectLatest
+            subscribe(topic)
+        }
+    }
+
+    private suspend fun subscribe(topic: String) {
         val subscriber = NtfySubscriber(
             base = Config.NTFY_BASE,
-            topic = Config.NTFY_TOPIC,
+            topic = topic,
             maxAgeSec = Config.MAX_MESSAGE_AGE_SEC,
         )
         val launcher = AppLauncher(applicationContext)
