@@ -37,6 +37,35 @@ away. The on-screen UI is built for driving: a knob-navigable grid, no typing.
 - **Status screen** — connection health, recent events, clock skew vs. the phone,
   downloadable diagnostic logs, and grant buttons for missing permissions.
 
+## Permissions
+
+Copilot needs a few **powerful permissions** to act as a hands-free car remote.
+They're listed in full here for transparency. Three of them must be enabled **by
+hand in Android Settings** — Android won't let an app grant these itself — and the
+app silently does nothing if they're missing:
+
+| Permission | Enable via | Why Copilot needs it | If you skip it |
+|---|---|---|---|
+| **Display over other apps** (`SYSTEM_ALERT_WINDOW`) | Prompted automatically the first time you open the app | Launch other apps from the background and show the floating "return to Copilot" bubble | App launches and the overlay bubble silently do nothing |
+| **Notification access** (`NotificationListenerService`) | In-app: **Settings → Enable now-playing access** | Read the now-playing title/artist from YT Music's media session (Liked Songs, history artwork) | Now-playing stays blank; Liked Songs can't capture the current track |
+| **Accessibility service** (`BackGrabberService`) | In-app: **Settings → Enable auto-return**, then flip the toggle in Android's Accessibility list | Intercept the hardware BACK key so Copilot **auto-returns to the foreground** after a song/route starts | No automatic return — you're left in YT Music / Waze after each command |
+
+> Re-enable the **accessibility service** after every reinstall — Android's
+> force-stop disables it, and there are no logs when it's off (it just looks broken).
+
+The rest are standard permissions, granted automatically at install / first run:
+
+| Permission | Why |
+|---|---|
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Subscribe to the ntfy command stream |
+| `FOREGROUND_SERVICE` (+ `_DATA_SYNC`, `_SPECIAL_USE`) | Keep the ntfy listener and the overlay bubble alive in the background |
+| `POST_NOTIFICATIONS` | Show the persistent foreground-service notification (Android 13+) |
+| `RECEIVE_BOOT_COMPLETED` | Optional auto-start on boot (off by default; toggle in Settings) |
+
+Also set **Battery optimization → Unrestricted** so Android doesn't kill the
+listener. See [First-time carbox setup](#first-time-carbox-setup) for the
+step-by-step grant order.
+
 ## Tech stack
 
 Kotlin · Jetpack Compose (Material 3) + Navigation Compose · OkHttp (ntfy
@@ -116,8 +145,9 @@ Declared permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `FOREGROUND_SERVICE`
 (+`_DATA_SYNC`, `_SPECIAL_USE`), `POST_NOTIFICATIONS`, `SYSTEM_ALERT_WINDOW`, plus
 the bound accessibility and notification-listener services.
 
-> **Signing:** `keystore/copilot-release.jks` + `signing.properties` are committed
-> deliberately (private repo, password not secret). `scripts/release.sh` runs
+> **Signing:** the release keystore + `signing.properties` are **local-only and
+> gitignored** — run `scripts/setup-signing.sh` once to generate them (a keyless
+> clone still builds, falling back to debug signing). `scripts/release.sh` runs
 > tests → builds the signed APK → tags → publishes the GitHub release; versionCode
 > is `MAJOR*10000 + MINOR*100 + PATCH`. See [`docs/RELEASING.md`](docs/RELEASING.md)
 > and the [GitHub setup checklist](docs/superpowers/github-setup-checklist.md).
@@ -141,7 +171,7 @@ Copilot/
 │       │   └── res/xml/accessibility_back_grabber.xml
 │       └── test/java/com/vladutu/copilot/   # Message, CategoryStore, charts, knob nav…
 ├── scripts/                       # release.sh, version.sh, bootstrap-wrapper.sh
-├── keystore/                      # committed signing key
+├── keystore/                      # signing.properties.template (real key is gitignored, local-only)
 ├── docs/                          # RELEASING.md, github-setup-checklist.md, plans & specs
 └── .github/                       # ci.yml, dependabot.yml
 ```

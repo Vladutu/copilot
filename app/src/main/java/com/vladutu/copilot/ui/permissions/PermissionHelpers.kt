@@ -24,4 +24,20 @@ object PermissionHelpers {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
+
+    fun isAccessibilityServiceEnabled(context: Context): Boolean {
+        val flat = Settings.Secure.getString(
+            context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return flat.split(":").any {
+            ComponentName.unflattenFromString(it)?.packageName == context.packageName
+        }
+    }
+
+    fun openAccessibilitySettings(context: Context) {
+        context.startActivity(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
 }

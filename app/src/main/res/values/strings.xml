@@ -42,6 +42,7 @@
     <string name="clear_all_title">Clear liked songs?</string>
     <string name="clear_all_message">This removes every song from your Liked list.</string>
     <string name="grant_now_playing_access">Enable now-playing access</string>
+    <string name="grant_accessibility">Enable auto-return (accessibility)</string>
     <string name="liked_listener_label">Copilot now-playing</string>
     <string name="settings_title">Settings</string>
     <string name="settings_autostart_label">Start Copilot when the car turns on</string>

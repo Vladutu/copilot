@@ -102,6 +102,14 @@ fun SettingsScreen(
             }
         }
 
+        // Accessibility (BACK interception / auto-return) grant — shown only while disabled.
+        // Android disables this on force-stop/reinstall, so it must be re-grantable in-app.
+        if (!PermissionHelpers.isAccessibilityServiceEnabled(ctx)) {
+            OutlinedButton(onClick = { PermissionHelpers.openAccessibilitySettings(ctx) }) {
+                Text(stringResource(R.string.grant_accessibility))
+            }
+        }
+
         OutlinedButton(onClick = onOpenLogs) {
             Text(stringResource(R.string.settings_diagnostic_log))
         }
