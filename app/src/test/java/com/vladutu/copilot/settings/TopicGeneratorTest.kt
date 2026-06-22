@@ -21,14 +21,12 @@ class TopicGeneratorTest {
         assertTrue(hex.all { it in '0'..'9' || it in 'a'..'f' })
     }
 
-    @Test fun `generate is deterministic for a seeded SecureRandom`() {
-        // Two SecureRandoms seeded identically must yield the same 16 bytes → same topic.
-        // Pin SHA1PRNG: the platform-default provider (e.g. NativePRNG on macOS) treats
-        // setSeed as supplementary entropy, so two default instances diverge. SHA1PRNG,
-        // when seeded before its first draw, is fully deterministic across JVMs.
-        val a = SecureRandom.getInstance("SHA1PRNG").apply { setSeed(byteArrayOf(1, 2, 3, 4)) }
-        val b = SecureRandom.getInstance("SHA1PRNG").apply { setSeed(byteArrayOf(1, 2, 3, 4)) }
-        assertEquals(TopicGenerator.generate(a), TopicGenerator.generate(b))
+    @Test fun `generate is deterministic for a seeded random source`() {
+        // generate() must be a pure function of the bytes it draws. Verify with a
+        // SecureRandom whose nextBytes is fed by java.util.Random: that algorithm is
+        // JLS-specified and identical on every JVM. (SHA1PRNG's setSeed determinism is
+        // provider-dependent — it passed on macOS but diverged on the CI JDK.)
+        assertEquals(TopicGenerator.generate(SeededRandom(1234)), TopicGenerator.generate(SeededRandom(1234)))
     }
 
     @Test fun `generate is overwhelmingly unique across calls`() {
@@ -47,5 +45,17 @@ class TopicGeneratorTest {
         assertFalse(TopicGenerator.isValid("copilot-0123"))
         assertFalse(TopicGenerator.isValid("copilot-0123456789ABCDEF0123456789abcdef"))
         assertFalse(TopicGenerator.isValid("copilot-0123456789abcdef0123456789abcdefgh"))
+    }
+}
+
+/**
+ * A deterministic [SecureRandom] for tests: its [nextBytes] is fed from [java.util.Random],
+ * whose generation algorithm is JLS-specified and therefore byte-identical on every JVM —
+ * unlike SHA1PRNG, whose seed handling depends on the active security provider.
+ */
+private class SeededRandom(seed: Long) : SecureRandom() {
+    private val src = java.util.Random(seed)
+    override fun nextBytes(bytes: ByteArray) {
+        for (i in bytes.indices) bytes[i] = src.nextInt().toByte()
     }
 }
