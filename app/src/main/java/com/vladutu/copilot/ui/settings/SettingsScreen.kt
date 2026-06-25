@@ -5,16 +5,19 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,11 +38,17 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
+import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
+    tileFontSize: Float,
+    onTileFontSizeChange: (Float) -> Unit,
+    tileBorderWidth: Float,
+    onTileBorderWidthChange: (Float) -> Unit,
     topic: String?,
     onCopyTopic: () -> Unit,
     onRegenerate: () -> Unit,
@@ -72,6 +81,24 @@ fun SettingsScreen(
             )
             Switch(checked = autoStart, onCheckedChange = onAutoStartChange)
         }
+
+        // Tile appearance section.
+        Text(
+            text = stringResource(R.string.settings_tiles_label),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        SliderRow(
+            label = stringResource(R.string.settings_tile_font_size),
+            value = tileFontSize,
+            valueRange = TileAppearanceDefaults.FONT_SIZE_MIN..TileAppearanceDefaults.FONT_SIZE_MAX,
+            onValueChange = onTileFontSizeChange,
+        )
+        SliderRow(
+            label = stringResource(R.string.settings_tile_border_width),
+            value = tileBorderWidth,
+            valueRange = TileAppearanceDefaults.BORDER_WIDTH_MIN..TileAppearanceDefaults.BORDER_WIDTH_MAX,
+            onValueChange = onTileBorderWidthChange,
+        )
 
         // Pairing section.
         Text(
@@ -157,6 +184,67 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_regenerate_title)) },
             text = { Text(stringResource(R.string.settings_regenerate_message)) },
         )
+    }
+}
+
+/**
+ * A labeled slider that snaps to whole units and shows the current value next to its
+ * label. Used for the tile font size (sp) and highlighted border thickness (dp).
+ */
+@Composable
+private fun SliderRow(
+    label: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+) {
+    fun step(delta: Float) =
+        onValueChange((value + delta).coerceIn(valueRange.start, valueRange.endInclusive))
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = value.roundToInt().toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // −/+ buttons flank the slider: the carbox touchscreen lags, so dragging the
+        // thumb precisely is fiddly — the buttons give a reliable one-step nudge.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = { step(-1f) },
+                enabled = value > valueRange.start,
+                modifier = Modifier.size(56.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("−", style = MaterialTheme.typography.headlineSmall)
+            }
+            Slider(
+                value = value,
+                onValueChange = { onValueChange(it.roundToInt().toFloat()) },
+                valueRange = valueRange,
+                steps = (valueRange.endInclusive - valueRange.start).roundToInt() - 1,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedButton(
+                onClick = { step(1f) },
+                enabled = value < valueRange.endInclusive,
+                modifier = Modifier.size(56.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("+", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
     }
 }
 

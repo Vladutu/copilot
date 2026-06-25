@@ -45,6 +45,24 @@ class SettingsStoreTest {
         assertEquals(false, store.autoStartFlow.first())
     }
 
+    @Test fun `tile font size defaults to the shipped value`() = runTest {
+        assertEquals(32f, store.tileFontSizeFlow.first(), 0f)
+    }
+
+    @Test fun `setTileFontSize round-trips`() = runTest {
+        store.setTileFontSize(40f)
+        assertEquals(40f, store.tileFontSizeFlow.first(), 0f)
+    }
+
+    @Test fun `tile border width defaults to the shipped value`() = runTest {
+        assertEquals(4f, store.tileBorderWidthFlow.first(), 0f)
+    }
+
+    @Test fun `setTileBorderWidth round-trips`() = runTest {
+        store.setTileBorderWidth(8f)
+        assertEquals(8f, store.tileBorderWidthFlow.first(), 0f)
+    }
+
     @Test fun `topicFlow is null before any topic exists`() = runTest {
         assertNull(store.topicFlow.first())
     }

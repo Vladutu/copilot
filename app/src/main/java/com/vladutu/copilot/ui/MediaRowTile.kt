@@ -41,8 +41,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
+import com.vladutu.copilot.ui.theme.LocalTileAppearance
 
 /**
  * The one inline tile every grid uses: a square left visual (thumbnail / icon /
@@ -77,8 +77,9 @@ fun MediaRowTile(
     }
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val appearance = LocalTileAppearance.current
     val border = if (isFocused) {
-        BorderStroke(4.dp, MaterialTheme.colorScheme.primary)
+        BorderStroke(appearance.focusBorderWidth, MaterialTheme.colorScheme.primary)
     } else {
         BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
@@ -115,7 +116,10 @@ fun MediaRowTile(
                 )
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 32.sp, lineHeight = 38.sp),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = appearance.fontSize,
+                        lineHeight = appearance.lineHeight,
+                    ),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,

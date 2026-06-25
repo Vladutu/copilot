@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,6 +46,9 @@ import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.settings.SettingsScreen
 import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
+import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import com.vladutu.copilot.ui.theme.TileAppearance
+import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -112,6 +118,13 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     val app = context.applicationContext as CopilotApp
     val launcher = remember { AppLauncher(context) }
 
+    // Tile appearance is read deep in the tree by every grid tile; provide it once here
+    // from the persisted settings so the screens themselves stay plumbing-free.
+    val tileFontSize by app.locator.settingsStore.tileFontSizeFlow
+        .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.FONT_SIZE_SP)
+    val tileBorderWidth by app.locator.settingsStore.tileBorderWidthFlow
+        .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.BORDER_WIDTH_DP)
+
     // A successful launch sends Copilot to the back, so a failure leaves this UI
     // in front — surface the reason as a toast instead of swallowing it silently.
     fun launchOrReport(result: AppLauncher.Result, onOk: () -> Unit) {
@@ -122,6 +135,9 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         }
     }
 
+    CompositionLocalProvider(
+        LocalTileAppearance provides TileAppearance(tileFontSize.sp, tileBorderWidth.dp),
+    ) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
@@ -271,6 +287,14 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onAutoStartChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setAutoStart(enabled) }
                 },
+                tileFontSize = tileFontSize,
+                onTileFontSizeChange = { sp ->
+                    app.applicationScope.launch { app.locator.settingsStore.setTileFontSize(sp) }
+                },
+                tileBorderWidth = tileBorderWidth,
+                onTileBorderWidthChange = { dp ->
+                    app.applicationScope.launch { app.locator.settingsStore.setTileBorderWidth(dp) }
+                },
                 topic = topic,
                 onCopyTopic = {
                     topic?.let { t ->
@@ -290,5 +314,6 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("logs") {
             LogsScreen(onBack = { nav.popBackStack() })
         }
+    }
     }
 }

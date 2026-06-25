@@ -4,7 +4,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,24 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAutoStart(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[KEY_AUTO_START] = enabled }
+    }
+
+    /** Tile label text size in sp; defaults to the value tiles shipped with. */
+    val tileFontSizeFlow: Flow<Float> = dataStore.data.map { prefs ->
+        prefs[KEY_TILE_FONT_SIZE] ?: TileAppearanceDefaults.FONT_SIZE_SP
+    }
+
+    suspend fun setTileFontSize(sp: Float) {
+        dataStore.edit { prefs -> prefs[KEY_TILE_FONT_SIZE] = sp }
+    }
+
+    /** Highlighted (focused) tile border thickness in dp; defaults to the shipped value. */
+    val tileBorderWidthFlow: Flow<Float> = dataStore.data.map { prefs ->
+        prefs[KEY_TILE_BORDER_WIDTH] ?: TileAppearanceDefaults.BORDER_WIDTH_DP
+    }
+
+    suspend fun setTileBorderWidth(dp: Float) {
+        dataStore.edit { prefs -> prefs[KEY_TILE_BORDER_WIDTH] = dp }
     }
 
     /** Null until [ensureTopic] (or [regenerateTopic]) has minted one. */
@@ -49,5 +69,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
     private companion object {
         val KEY_AUTO_START = booleanPreferencesKey("auto_start_on_boot")
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
+        val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
+        val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")
     }
 }
