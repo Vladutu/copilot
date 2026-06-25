@@ -28,7 +28,7 @@ class NtfySubscriber(
                 client.newCall(req).execute().use { response ->
                     if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                     delayMs = backoffInitialMs
-                    val source = response.body!!.source()
+                    val source = response.body.source()
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line() ?: break
                         val result = Message.parseEnvelope(line, clock(), maxAgeSec)

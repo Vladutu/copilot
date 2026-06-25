@@ -24,7 +24,7 @@ class ArtworkCache(
                 client.newCall(Request.Builder().url(imageUrl).build()).execute().use { resp ->
                     if (!resp.isSuccessful) return@withContext null
                     tmp.outputStream().use { sink ->
-                        resp.body?.byteStream()?.copyTo(sink)
+                        resp.body.byteStream().copyTo(sink)
                     }
                 }
                 if (!tmp.renameTo(target)) {

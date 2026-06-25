@@ -154,7 +154,7 @@ private fun BrowsePlaylistRow(
             runCatching {
                 okHttp.newCall(okhttp3.Request.Builder().url(url).build()).execute().use { resp ->
                     if (!resp.isSuccessful) return@runCatching null
-                    resp.body?.bytes()?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                    resp.body.bytes().let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                 }
             }.getOrNull()
         }?.asImageBitmap()

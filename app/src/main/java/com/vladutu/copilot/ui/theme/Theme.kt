@@ -35,7 +35,12 @@ fun CopilotDriveTheme(content: @Composable () -> Unit) {
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            // statusBarColor/navigationBarColor are deprecated in favour of edge-to-edge, which
+            // has no like-for-like replacement and would change layout insets. targetSdk is pinned
+            // at 34 on purpose, so we keep the solid bars that match the app background.
+            @Suppress("DEPRECATION")
             window.statusBarColor = PilotBackground.toArgb()
+            @Suppress("DEPRECATION")
             window.navigationBarColor = PilotBackground.toArgb()
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false

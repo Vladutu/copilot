@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,7 +65,7 @@ fun MusicScreen(
 
     // Order must match the knob reading order above.
     val tiles = listOf(
-        MusicTile(R.string.home_playlists, Icons.Filled.PlaylistPlay, onOpenPlaylists),
+        MusicTile(R.string.home_playlists, Icons.AutoMirrored.Filled.PlaylistPlay, onOpenPlaylists),
         MusicTile(R.string.home_songs, Icons.Filled.MusicNote, onOpenSongs),
         MusicTile(
             R.string.home_top_weekly,
