@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -49,6 +50,10 @@ fun SettingsScreen(
     onTileFontSizeChange: (Float) -> Unit,
     tileBorderWidth: Float,
     onTileBorderWidthChange: (Float) -> Unit,
+    wazeGoEnabled: Boolean,
+    onWazeGoEnabledChange: (Boolean) -> Unit,
+    wazeGoLabel: String,
+    onWazeGoLabelChange: (String) -> Unit,
     topic: String?,
     onCopyTopic: () -> Unit,
     onRegenerate: () -> Unit,
@@ -98,6 +103,36 @@ fun SettingsScreen(
             value = tileBorderWidth,
             valueRange = TileAppearanceDefaults.BORDER_WIDTH_MIN..TileAppearanceDefaults.BORDER_WIDTH_MAX,
             onValueChange = onTileBorderWidthChange,
+        )
+
+        // Waze "Go now" knob-tap section.
+        Text(
+            text = stringResource(R.string.settings_waze_label),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_waze_go_toggle),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Switch(checked = wazeGoEnabled, onCheckedChange = onWazeGoEnabledChange)
+        }
+        var labelDraft by remember(wazeGoLabel) { mutableStateOf(wazeGoLabel) }
+        OutlinedTextField(
+            value = labelDraft,
+            onValueChange = {
+                labelDraft = it
+                onWazeGoLabelChange(it)
+            },
+            singleLine = true,
+            enabled = wazeGoEnabled,
+            label = { Text(stringResource(R.string.settings_waze_go_button_label)) },
+            modifier = Modifier.fillMaxWidth(),
         )
 
         // Pairing section.

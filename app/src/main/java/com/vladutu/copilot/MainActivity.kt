@@ -279,6 +279,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("settings") {
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
+                .collectAsStateWithLifecycle(initialValue = true)
+            val wazeGoLabel by app.locator.settingsStore.wazeGoLabelFlow
+                .collectAsStateWithLifecycle(initialValue = "Go now")
             val topic by app.locator.settingsStore.topicFlow
                 .collectAsStateWithLifecycle(initialValue = null)
             val copiedMsg = stringResource(R.string.settings_topic_copied)
@@ -294,6 +298,14 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 tileBorderWidth = tileBorderWidth,
                 onTileBorderWidthChange = { dp ->
                     app.applicationScope.launch { app.locator.settingsStore.setTileBorderWidth(dp) }
+                },
+                wazeGoEnabled = wazeGoEnabled,
+                onWazeGoEnabledChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setWazeGoEnabled(enabled) }
+                },
+                wazeGoLabel = wazeGoLabel,
+                onWazeGoLabelChange = { label ->
+                    app.applicationScope.launch { app.locator.settingsStore.setWazeGoLabel(label) }
                 },
                 topic = topic,
                 onCopyTopic = {

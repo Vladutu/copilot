@@ -3,6 +3,7 @@ package com.vladutu.copilot.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -17,6 +18,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsStoreTest {
 
     @get:Rule
@@ -86,5 +88,25 @@ class SettingsStoreTest {
         assertNotEquals(original, fresh)
         assertTrue(TopicGenerator.isValid(fresh))
         assertEquals(fresh, store.topicFlow.first())
+    }
+
+    @Test fun `waze-go enabled defaults to true`() = runTest {
+        assertEquals(true, store.wazeGoEnabledFlow.first())
+    }
+
+    @Test fun `setWazeGoEnabled round-trips`() = runTest {
+        store.setWazeGoEnabled(false)
+        assertEquals(false, store.wazeGoEnabledFlow.first())
+        store.setWazeGoEnabled(true)
+        assertEquals(true, store.wazeGoEnabledFlow.first())
+    }
+
+    @Test fun `waze-go label defaults to Go now`() = runTest {
+        assertEquals("Go now", store.wazeGoLabelFlow.first())
+    }
+
+    @Test fun `setWazeGoLabel round-trips`() = runTest {
+        store.setWazeGoLabel("Start")
+        assertEquals("Start", store.wazeGoLabelFlow.first())
     }
 }

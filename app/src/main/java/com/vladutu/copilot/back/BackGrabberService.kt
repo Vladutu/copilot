@@ -2,15 +2,29 @@ package com.vladutu.copilot.back
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.graphics.Path
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import com.vladutu.copilot.CopilotApp
 import com.vladutu.copilot.MainActivity
 import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
+import com.vladutu.copilot.waze.GoNodeMatcher
+import com.vladutu.copilot.waze.GoTapDecider
+import com.vladutu.copilot.waze.WazeGoDefaults
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 /**
  * Accessibility service whose sole job is to bring Copilot back to the foreground when the
@@ -35,6 +49,24 @@ class BackGrabberService : AccessibilityService() {
     /** Guards against scheduling multiple settle-timers from repeated YT Music window events. */
     private var switchBackPending = false
 
+    /** Live mirror of the Waze Go-now settings, kept current by collectors started in
+     *  onServiceConnected. Read synchronously from onKeyEvent (which is not a coroutine). */
+    @Volatile private var wazeGoEnabled = true
+    @Volatile private var wazeGoLabel = WazeGoDefaults.LABEL
+
+    /** Key code of an in-flight knob press we're consuming end-to-end (DOWN+UP), or null when
+     *  none. Tracks the code rather than a bool because the carbox interleaves a synthetic
+     *  BUTTON_1 with the duplicate DPAD_CENTER, so UP-matching must be per-keycode to pair the
+     *  right halves (mirrors consumingThisPress for BACK, but BACK can't interleave). */
+    private var consumingKnobKeyCode: Int? = null
+
+    /** eventTime of the last Go-now tap we dispatched. The carbox re-injects every knob press
+     *  as a 2nd DPAD_CENTER from a nameless device ~tens of ms later (same synthetic-duplicate
+     *  behavior the BACK handling drops); we debounce on this so one press taps exactly once. */
+    @Volatile private var lastWazeTapAt = 0L
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         // Belt-and-suspenders: also set the filter-key-events flag programmatically. Some
@@ -47,6 +79,10 @@ class BackGrabberService : AccessibilityService() {
         }
         AutoSwitchBack.ownPackage = applicationContext.packageName
         DiagnosticLog.i(TAG, "onServiceConnected flags=0x${serviceInfo?.flags?.toString(16)} caps=0x${serviceInfo?.capabilities?.toString(16)} ownPkg=${applicationContext.packageName}")
+
+        val store = (applicationContext as CopilotApp).locator.settingsStore
+        serviceScope.launch { store.wazeGoEnabledFlow.collect { wazeGoEnabled = it } }
+        serviceScope.launch { store.wazeGoLabelFlow.collect { wazeGoLabel = it } }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -122,6 +158,12 @@ class BackGrabberService : AccessibilityService() {
     override fun onInterrupt() {
         DiagnosticLog.w(TAG, "onInterrupt")
         consumingThisPress = false
+        consumingKnobKeyCode = null
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -132,6 +174,21 @@ class BackGrabberService : AccessibilityService() {
                 "action=${event.action} repeat=${event.repeatCount} dev='$device' " +
                 "src=0x${event.source.toString(16)} bubbleVisible=${BubbleController.isVisible()}",
         )
+
+        // Waze "Go now" knob tap. Independent of BACK handling below. We claim both halves
+        // of a press only when we actually dispatch the tap, so non-acting presses (feature
+        // off, not Waze, no node yet) fall straight through to their normal behavior.
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (event.keyCode == consumingKnobKeyCode) return true // swallow repeat of a claimed press
+                if (event.repeatCount == 0 && tryTapWazeGo(event.keyCode, event.eventTime)) return true
+            }
+            KeyEvent.ACTION_UP ->
+                if (event.keyCode == consumingKnobKeyCode) {
+                    consumingKnobKeyCode = null
+                    return true
+                }
+        }
 
         if (event.keyCode != KeyEvent.KEYCODE_BACK) return false
 
@@ -177,7 +234,98 @@ class BackGrabberService : AccessibilityService() {
         applicationContext.startActivity(intent)
     }
 
+    /**
+     * If the press is an enabled knob press while Waze is foreground and a node matching the
+     * configured label is on screen, dispatch a tap at its center and claim the press.
+     * Returns true only when a tap was dispatched (so the caller consumes the event).
+     */
+    private fun tryTapWazeGo(keyCode: Int, eventTime: Long): Boolean {
+        val foreground = AutoSwitchBack.foregroundForDiagnostics()
+        if (!GoTapDecider.shouldAttempt(wazeGoEnabled, foreground, keyCode, WazeGoDefaults.KNOB_KEYCODES)) {
+            return false
+        }
+        // The carbox re-injects the same press a few tens of ms later as a synthetic DPAD_CENTER.
+        // If we just tapped, swallow the duplicate (consume it) instead of tapping a second time
+        // on whatever replaced the "Go now" screen once navigation started.
+        if (eventTime - lastWazeTapAt < TAP_DEBOUNCE_MS) {
+            consumingKnobKeyCode = keyCode
+            return true
+        }
+        val label = wazeGoLabel.ifBlank { WazeGoDefaults.LABEL }
+        val root = rootInActiveWindow
+        if (root == null) {
+            DiagnosticLog.w(TAG, "waze-go: knob pressed but no active-window root")
+            return false
+        }
+        val node = findGoNode(root, label)
+        if (node == null) {
+            DiagnosticLog.i(TAG, "waze-go: knob pressed, no '$label' node — ${describeNodes(root)}")
+            return false
+        }
+        val bounds = Rect().also { node.getBoundsInScreen(it) }
+        dispatchTap(bounds.exactCenterX(), bounds.exactCenterY())
+        DiagnosticLog.i(TAG, "waze-go: tapped '$label' at (${bounds.centerX()},${bounds.centerY()})")
+        lastWazeTapAt = eventTime
+        consumingKnobKeyCode = keyCode
+        return true
+    }
+
+    /** Breadth-first search for the first node whose text/contentDescription matches [label]. */
+    private fun findGoNode(root: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (GoNodeMatcher.matches(label, node.text?.toString(), node.contentDescription?.toString())) {
+                return node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return null
+    }
+
+    private fun dispatchTap(x: Float, y: Float) {
+        val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0L, TAP_DURATION_MS))
+            .build()
+        val dispatched = dispatchGesture(gesture, null, null)
+        if (!dispatched) DiagnosticLog.w(TAG, "waze-go: dispatchGesture returned false")
+    }
+
+    /** Compact dump of labeled nodes, so the first car test reveals how Waze exposes "Go now"
+     *  (text vs contentDescription, bounds, clickable) even when the configured label misses. */
+    private fun describeNodes(root: AccessibilityNodeInfo): String {
+        val sb = StringBuilder("nodes=[")
+        var shown = 0
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty() && shown < MAX_DUMP_NODES) {
+            val node = queue.removeFirst()
+            val text = node.text?.toString()
+            val desc = node.contentDescription?.toString()
+            if (!text.isNullOrBlank() || !desc.isNullOrBlank()) {
+                val b = Rect().also { node.getBoundsInScreen(it) }
+                sb.append("{t='$text',d='$desc',b=${b.toShortString()},clk=${node.isClickable}} ")
+                shown++
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return sb.append(']').toString()
+    }
+
     private companion object {
         const val TAG = "BackGrabber"
+        const val TAP_DURATION_MS = 50L
+        const val MAX_DUMP_NODES = 40
+
+        /** Window in which a 2nd knob press is treated as the carbox's synthetic duplicate of the
+         *  first and swallowed. Comfortably covers the ~45–200ms re-injection seen in logs while
+         *  staying below a realistic deliberate double-press. */
+        const val TAP_DEBOUNCE_MS = 800L
     }
 }

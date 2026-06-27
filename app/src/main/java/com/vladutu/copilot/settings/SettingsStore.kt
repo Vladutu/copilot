@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
+import com.vladutu.copilot.waze.WazeGoDefaults
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -43,6 +44,24 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_TILE_BORDER_WIDTH] = dp }
     }
 
+    /** Whether a knob press taps Waze's "Go now". Defaults on. */
+    val wazeGoEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_WAZE_GO_ENABLED] ?: true
+    }
+
+    suspend fun setWazeGoEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_WAZE_GO_ENABLED] = enabled }
+    }
+
+    /** Text Copilot taps on Waze's confirm screen; defaults to "Go now". */
+    val wazeGoLabelFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_WAZE_GO_LABEL] ?: WazeGoDefaults.LABEL
+    }
+
+    suspend fun setWazeGoLabel(label: String) {
+        dataStore.edit { prefs -> prefs[KEY_WAZE_GO_LABEL] = label }
+    }
+
     /** Null until [ensureTopic] (or [regenerateTopic]) has minted one. */
     val topicFlow: Flow<String?> = dataStore.data.map { prefs -> prefs[KEY_NTFY_TOPIC] }
 
@@ -71,5 +90,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")
+        val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
+        val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
     }
 }
