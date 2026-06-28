@@ -7,6 +7,10 @@ object YtMusicUrls {
     fun playlist(playlistId: String): String =
         "https://music.youtube.com/watch?list=$playlistId&shuffle=1"
 
+    /** Plays [playlistId] in list order (no shuffle) — the Time Machine's chronological tour. */
+    fun orderedPlaylist(playlistId: String): String =
+        "https://music.youtube.com/watch?list=$playlistId"
+
     /** YT Music "song radio": endless generated mix seeded from one video. */
     fun radioMix(videoId: String): String =
         "https://music.youtube.com/watch?v=$videoId&list=RDAMVM$videoId"

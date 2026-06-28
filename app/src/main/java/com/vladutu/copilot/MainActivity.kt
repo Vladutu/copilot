@@ -167,31 +167,37 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
 
         composable("music") {
             val scope = rememberCoroutineScope()
-            // Tap → chart fetch + queue mint (1-3 s) → YT Music. Busy guards re-taps
-            // and drives the tile's spinner; the repository never throws (it falls
-            // back to the US chart playlist), so only the launch itself can fail.
-            // Deliberate: leaving Copilot during the busy window doesn't cancel the
-            // launch — music still starts when ready, same as a Pilot-driven launch
-            // landing while navigating. Knob-BACK does cancel it: popping this route
-            // disposes the scope mid-fetch, which is the right call for a back-out.
-            var topWeeklyBusy by remember { mutableStateOf(false) }
+            val timeMachineFailedMsg = stringResource(R.string.time_machine_failed)
+            // Tap → pick years + resolve (cache or Wikipedia + search) + queue mint (≈1-4 s,
+            // near-instant for cached years) → YT Music. Busy guards re-taps and drives the
+            // tile's spinner. The repository never throws but can return null (nothing resolved
+            // — cold cache + dead network); that surfaces as a brief toast instead of a launch.
+            // Deliberate: leaving Copilot during the busy window doesn't cancel the launch —
+            // music still starts when ready, same as a Pilot-driven launch landing while
+            // navigating. Knob-BACK does cancel it: popping this route disposes the scope
+            // mid-fetch, which is the right call for a back-out.
+            var timeMachineBusy by remember { mutableStateOf(false) }
             MusicScreen(
                 onOpenPlaylists = { nav.navigate("list/playlist") },
                 onOpenSongs = { nav.navigate("list/song") },
-                onOpenTopWeekly = {
-                    if (!topWeeklyBusy) {
-                        topWeeklyBusy = true
+                onOpenTimeMachine = {
+                    if (!timeMachineBusy) {
+                        timeMachineBusy = true
                         scope.launch {
                             try {
-                                val url = app.locator.chartsRepository.topWeeklyLaunchUrl()
-                                launchOrReport(launcher.launchYtMusic(url)) { onLeftToOtherApp() }
+                                val url = app.locator.timeMachineRepository.launchUrl()
+                                if (url != null) {
+                                    launchOrReport(launcher.launchYtMusic(url)) { onLeftToOtherApp() }
+                                } else {
+                                    Toast.makeText(context, timeMachineFailedMsg, Toast.LENGTH_SHORT).show()
+                                }
                             } finally {
-                                topWeeklyBusy = false
+                                timeMachineBusy = false
                             }
                         }
                     }
                 },
-                topWeeklyBusy = topWeeklyBusy,
+                timeMachineBusy = timeMachineBusy,
                 onOpenDiscover = { nav.navigate("discover") },
                 onOpenRadio = { nav.navigate("list/radio") },
                 onOpenLiked = { nav.navigate("liked") },

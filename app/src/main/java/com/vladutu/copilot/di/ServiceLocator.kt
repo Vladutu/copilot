@@ -5,9 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.vladutu.copilot.bubble.BubblePositionStore
-import com.vladutu.copilot.charts.ChartsRepository
-import com.vladutu.copilot.charts.TempPlaylistMinter
-import com.vladutu.copilot.charts.newpipe.NewPipeChartFetcher
 import com.vladutu.copilot.discover.CategoryStore
 import com.vladutu.copilot.discover.DiscoverRepository
 import com.vladutu.copilot.discover.newpipe.NewPipeMusicSearcher
@@ -17,12 +14,17 @@ import com.vladutu.copilot.history.HistoryStore
 import com.vladutu.copilot.liked.LikedSongStore
 import com.vladutu.copilot.liked.LikedSongsRepository
 import com.vladutu.copilot.settings.SettingsStore
+import com.vladutu.copilot.timemachine.TempPlaylistMinter
+import com.vladutu.copilot.timemachine.TimeMachineCache
+import com.vladutu.copilot.timemachine.TimeMachineRepository
+import com.vladutu.copilot.timemachine.wikipedia.WikipediaYearEndSource
 import okhttp3.OkHttpClient
 
 private val Context.historyDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_history")
 private val Context.bubbleDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_bubble")
 private val Context.discoverDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_discover")
 private val Context.likedDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_liked")
+private val Context.timeMachineDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_time_machine")
 internal val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_settings")
 
 class ServiceLocator(private val appContext: Context) {
@@ -54,9 +56,14 @@ class ServiceLocator(private val appContext: Context) {
         DiscoverRepository(NewPipeMusicSearcher(okHttp))
     }
 
-    val chartsRepository: ChartsRepository by lazy {
-        // Same containment rule as discoverRepository: the only line that names the
-        // chart backend.
-        ChartsRepository(NewPipeChartFetcher(okHttp), TempPlaylistMinter(okHttp))
+    val timeMachineRepository: TimeMachineRepository by lazy {
+        // Same containment rule as discoverRepository: WikipediaYearEndSource +
+        // NewPipeMusicSearcher are the only lines naming the chart/search backends.
+        TimeMachineRepository(
+            source = WikipediaYearEndSource(okHttp),
+            searcher = NewPipeMusicSearcher(okHttp),
+            cache = TimeMachineCache(appContext.timeMachineDataStore),
+            minter = TempPlaylistMinter(okHttp),
+        )
     }
 }

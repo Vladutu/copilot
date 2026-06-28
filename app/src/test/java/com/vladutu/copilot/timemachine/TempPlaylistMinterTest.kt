@@ -1,4 +1,4 @@
-package com.vladutu.copilot.charts
+package com.vladutu.copilot.timemachine
 
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -27,37 +27,35 @@ class TempPlaylistMinterTest {
         server.shutdown()
     }
 
-    @Test fun `mints a music-youtube launch url from the redirect Location`() = runTest {
+    @Test fun `returns the list id parsed from the redirect Location`() = runTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(303)
                 .setHeader("Location", "https://www.youtube.com/watch?v=aaa&list=TLGGtest123"),
         )
-        val url = minter.mint(listOf("aaa", "bbb", "ccc"))
-        assertEquals("https://music.youtube.com/watch?list=TLGGtest123&shuffle=1", url)
-        val recorded = server.takeRequest()
-        assertEquals("/watch_videos?video_ids=aaa,bbb,ccc", recorded.path)
+        assertEquals("TLGGtest123", minter.mint(listOf("aaa", "bbb", "ccc")))
+        assertEquals("/watch_videos?video_ids=aaa,bbb,ccc", server.takeRequest().path)
     }
 
-    @Test fun `non-redirect response throws ChartsException`() = runTest {
+    @Test fun `non-redirect response throws TimeMachineException`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("nope"))
         try {
             minter.mint(listOf("aaa"))
-            fail("expected ChartsException")
-        } catch (expected: ChartsException) {
+            fail("expected TimeMachineException")
+        } catch (expected: TimeMachineException) {
         }
     }
 
-    @Test fun `network failure surfaces as ChartsException`() = runTest {
+    @Test fun `network failure surfaces as TimeMachineException`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
         try {
             minter.mint(listOf("aaa"))
-            fail("expected ChartsException")
-        } catch (expected: ChartsException) {
+            fail("expected TimeMachineException")
+        } catch (expected: TimeMachineException) {
         }
     }
 
-    @Test fun `redirect without a list id throws ChartsException`() = runTest {
+    @Test fun `redirect without a list id throws TimeMachineException`() = runTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(303)
@@ -65,8 +63,8 @@ class TempPlaylistMinterTest {
         )
         try {
             minter.mint(listOf("aaa"))
-            fail("expected ChartsException")
-        } catch (expected: ChartsException) {
+            fail("expected TimeMachineException")
+        } catch (expected: TimeMachineException) {
             assertTrue(expected.message!!.contains("list"))
         }
     }
