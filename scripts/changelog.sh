@@ -45,6 +45,7 @@ trap 'rm -f "$SECTION_FILE"' EXIT
 # Categorize commit subjects into Keep-a-Changelog sections.
 git log --no-merges --format='%s' $RANGE | awk -v ver="$VERSION" -v date="$DATE" '
   function cap(s){ return toupper(substr(s,1,1)) substr(s,2) }
+  /^docs: changelog for v/ { next }   # skip the auto-generated changelog commits
   {
     desc=$0; type=""
     if (match($0, /^[a-zA-Z]+(\([^)]*\))?!?: /)) {
