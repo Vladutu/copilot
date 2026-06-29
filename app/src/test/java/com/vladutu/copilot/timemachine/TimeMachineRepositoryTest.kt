@@ -49,40 +49,49 @@ private object ThrowingSearcher : MusicSearcher {
 
 class TimeMachineRepositoryTest {
 
-    @Test fun `chronological tour mints sorted years' songs and returns an ordered url`() = runTest {
+    @Test fun `tour mints years in one direction, building each year up to the number-one hit`() = runTest {
         val years = listOf(1985, 1990, 1995, 2000, 2005)        // only these resolve; rest are empty
         val source = FakeSource(years.associateWith { y -> (1..3).map { SongRef("A$y", "$it") } })
         val searcher = FakeSearcher { q -> q.replace(" ", "_") }
         val cache = MapCache()
         val minter = FakeMinter()
+        val seed = 7L
         val repo = TimeMachineRepository(
             source, searcher, cache, minter,
-            YearSelector(random = Random(7), currentYear = { 2026 }),
+            YearSelector(currentYear = { 2026 }),
+            random = Random(seed),
         )
 
         val url = repo.launchUrl()
 
         assertEquals("https://music.youtube.com/watch?list=TLGGtest", url)
-        // Years sorted ascending, each year's three songs kept in chart order.
-        val expected = years.sorted().flatMap { y -> (1..3).map { "A${y}_$it" } }
+        // Direction is a coin flip on the same seed; within a year songs run #3 → #2 → #1.
+        val ascending = Random(seed).nextBoolean()
+        val orderedYears = if (ascending) years.sorted() else years.sortedDescending()
+        val expected = orderedYears.flatMap { y -> listOf("A${y}_3", "A${y}_2", "A${y}_1") }
         assertEquals(expected, minter.minted)
-        // All five fully-resolved years were cached.
+        // All five fully-resolved years were cached (in canonical chart order, not the play order).
         assertEquals(years.toSet(), cache.map.keys)
+        assertEquals(listOf("A1985_1", "A1985_2", "A1985_3"), cache.map[1985])
     }
 
     @Test fun `cached years resolve without hitting the source or searcher`() = runTest {
         // Range is exactly five years (1980..1984), all pre-cached → backends never touched.
         val cache = MapCache((1980..1984).associateWith { listOf("c$it") })
         val minter = FakeMinter()
+        val seed = 3L
         val repo = TimeMachineRepository(
             ThrowingSource, ThrowingSearcher, cache, minter,
             YearSelector(currentYear = { 1985 }),
+            random = Random(seed),
         )
 
         val url = repo.launchUrl()
 
         assertEquals("https://music.youtube.com/watch?list=TLGGtest", url)
-        assertEquals(listOf("c1980", "c1981", "c1982", "c1983", "c1984"), minter.minted)
+        val years = (1980..1984).map { "c$it" }                 // one id per year, so reversal is a no-op
+        val expected = if (Random(seed).nextBoolean()) years else years.reversed()
+        assertEquals(expected, minter.minted)
         assertEquals(0, cache.puts)
     }
 
@@ -112,7 +121,7 @@ class TimeMachineRepositoryTest {
         val url = repo.launchUrl()
 
         assertEquals("https://music.youtube.com/watch?list=TLGGtest", url)
-        assertEquals(listOf("A_1", "A_3"), minter.minted)       // order preserved, gap dropped
+        assertEquals(listOf("A_3", "A_1"), minter.minted)       // reversed (#2 missing), gap dropped
         assertTrue("partial year must not be cached", cache.map.isEmpty())
     }
 }

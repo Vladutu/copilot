@@ -8,15 +8,17 @@ weekly-chart fetch code retire; the `watch_videos` temp-playlist minter is reuse
 
 ## Summary
 
-A home-screen tile, **Time Machine**, that with one tap plays a chronological tour through
-the biggest songs of random past years. Tap → pick ~5 random years from 1980 to the last
-complete year → take each year's top 3 from that year's Billboard Year-End Hot 100 → resolve
-each to a YouTube video → mint one anonymous queue → play in **year order** (oldest first) in
-YouTube Music. ~1–4 s of background work (near-instant for years already cached), no new screen.
+A home-screen tile, **Time Machine**, that with one tap plays a tour through the biggest songs
+of random past years. Tap → pick ~5 random years from 1980 to the last complete year → take
+each year's top 3 from that year's Billboard Year-End Hot 100 → resolve each to a YouTube video
+→ mint one anonymous queue → play it in a **single sweep through the years** in YouTube Music.
+~1–4 s of background work (near-instant for years already cached), no new screen.
 
 This replaces Top Weekly, whose current-charts songs Georgian rarely likes. The "time machine"
-feel comes from moving *forward through eras* within one session (e.g. 1987 → 1996 → 2003 →
-2011 → 2019), so the queue is played **in chronological order, not shuffled**.
+feel comes from moving through eras within one session (e.g. 1987 → 1996 → 2003 → 2011 → 2019).
+**Ordering (revised after on-car testing 2026-06-29):** the year sweep direction is a **random
+coin flip each tap** (ascending or descending) so it isn't always oldest→newest, and within each
+year the three songs **build up to the #1 hit** (rank #3 → #2 → #1). Never shuffled.
 
 ## Verified facts (tested 2026-06-28, live Wikipedia)
 
@@ -58,14 +60,14 @@ Containment-boundaried (no MediaWiki/HTML/JSON types leak out). Per year:
 
 1. **Pick years** — `YearSelector` draws `YEARS_PER_TOUR` (5) distinct random years from
    `1980 … (deviceYear − 1)`. For each pick, if the resolved set is empty (missing/stub), discard
-   and draw another (bounded retries). Sort ascending.
+   and draw another (bounded retries).
 2. **Resolve each year → video IDs** (in parallel across years):
    - **Cache hit:** read `year → [videoId×3]` straight from disk. No network.
    - **Cache miss:** MediaWiki fetch + parse → top 3 `SongRef(artist, title)` →
      `MusicSearcher.searchSongs("$artist $title")`, take the first result's `videoId` →
      write `year → [ids]` to cache.
-3. **Assemble** — concatenate years in ascending order, top-3 within each in chart order
-   (chronological tour). ~15 IDs.
+3. **Assemble** — sort the years, flip a coin for direction (ascending or descending), and within
+   each year reverse to #3 → #2 → #1 so it climaxes on the #1 hit. ~15 IDs.
 4. **Mint** — reuse `TempPlaylistMinter.mint(ids)` → `watch_videos` → `list=…`.
 5. **Launch** — build an **ordered** YT Music URL (no `shuffle=1`) and
    `AppLauncher.launchYtMusic(url)`. Auto-switch-back behaves as for every YT Music launch.
@@ -127,8 +129,9 @@ and gain only the ordered-URL change.
   and K distinct years returned, range bounds respected.
 - **`TimeMachineCache`**: write-then-read round trip; a cached year resolves without touching the
   source (verified via a throwing fake source).
-- **`TimeMachineRepository`**: fake source/searcher/minter — chronological ordering, cache-hit path,
-  one-year failure degrades, total failure surfaces the error signal (no launch).
+- **`TimeMachineRepository`**: fake source/searcher/minter — play ordering (seeded-random direction +
+  within-year #3→#2→#1 build-up), cache stays in canonical chart order, cache-hit path, one-year
+  failure degrades, total failure surfaces the error signal (no launch).
 - **`TempPlaylistMinter`**: existing MockWebServer test, plus the ordered-URL builder asserts no
   `shuffle=1`.
 - No instrumented tests. Georgian builds + verifies on his Mac and real device (no Android SDK on

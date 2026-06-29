@@ -7,11 +7,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlin.random.Random
 
 /**
  * One-tap "Music Time Machine" orchestration (spec 2026-06-28): pick random years, resolve each
  * year's top songs to YouTube videos (cache first, else Wikipedia + search), mint one queue, and
- * return a launch URL that plays the tour in **chronological order** (oldest year first).
+ * return a launch URL for the tour.
+ *
+ * Ordering: years run in a **random direction** each tap (ascending or descending) so it doesn't
+ * always go oldest→newest; within each year the songs **build up to the #1 hit** (rank #3 → #2 → #1).
  *
  * Never throws: any failure degrades — a year that won't resolve is skipped, and only a tour that
  * produces zero songs returns null (the caller shows a brief error). The per-year cache is the
@@ -23,6 +27,7 @@ class TimeMachineRepository(
     private val cache: YearVideoCache,
     private val minter: PlaylistMinter,
     private val selector: YearSelector = YearSelector(),
+    private val random: Random = Random.Default,
 ) {
     /** The launch URL for one tour, or null if nothing resolved. */
     suspend fun launchUrl(): String? = try {
@@ -31,11 +36,13 @@ class TimeMachineRepository(
             DiagnosticLog.e(TAG, "no years resolved — time machine produced nothing to play")
             null
         } else {
-            // Sort years ascending, keep each year's top-N in chart order: a forward tour through time.
-            val orderedIds = resolved.toSortedMap().values.flatten()
+            // Random sweep direction each tap; within a year reverse to #3 → #2 → #1 (climax on #1).
+            val ascending = random.nextBoolean()
+            val years = resolved.keys.sorted().let { if (ascending) it else it.reversed() }
+            val orderedIds = years.flatMap { year -> resolved.getValue(year).reversed() }
             val listId = minter.mint(orderedIds)
             val url = YtMusicUrls.orderedPlaylist(listId)
-            DiagnosticLog.i(TAG, "tour years ${resolved.keys.sorted()} → ${orderedIds.size} tracks → $url")
+            DiagnosticLog.i(TAG, "tour years $years (${if (ascending) "asc" else "desc"}) → ${orderedIds.size} tracks → $url")
             url
         }
     } catch (e: CancellationException) {
