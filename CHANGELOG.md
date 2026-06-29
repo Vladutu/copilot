@@ -192,7 +192,6 @@ Initial released version. Highlights of the work leading up to it:
 - 2×2 home grid with larger tiles; resume the last screen.
 
 ### Changed
-- Rename package `be.doccle.copilot` → `com.vladutu.copilot`.
 - Adopt PilotTheme; amber-on-charcoal bubble icon and new launcher icon.
 
 ### Fixed
