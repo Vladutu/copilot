@@ -5,6 +5,19 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.17.0] - 2026-07-03
+
+### Added
+- Knob-rail redesign — vertical tiles across all screens
+
+### Build
+- Bump gradle-wrapper from 9.6.0 to 9.6.1 (#22)
+- Bump androidx.compose:compose-bom (#21)
+- Skip auto-generated changelog commits
+
+### Docs
+- Tidy up changelog history
+
 ## [0.16.2] - 2026-06-29
 
 ### Build
@@ -204,6 +217,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.17.0]: https://github.com/Vladutu/copilot/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/Vladutu/copilot/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/Vladutu/copilot/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/Vladutu/copilot/compare/v0.15.0...v0.16.0
