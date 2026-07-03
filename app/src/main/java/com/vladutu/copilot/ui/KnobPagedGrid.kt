@@ -83,6 +83,16 @@ fun <T> KnobPagedGrid(
         if (nav.pageCount > 0) pagerState.animateScrollToPage(pos.page)
     }
 
+    // A finger swipe moves the pager without going through the knob, so mirror the
+    // settled page back into our state — otherwise the dots, range and focus stay on
+    // the old page. Knob-driven changes settle on a page we've already set, so this is
+    // a no-op for them.
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage != pos.page) {
+            pos = nav.clamp(pos.copy(page = pagerState.settledPage))
+        }
+    }
+
     // Focus follows our stop, but only once the pager has actually settled on our page:
     // requesters are attached only to the settled page's tiles (see below), so requesting
     // while a scroll is still animating would target the old page and drag focus backward.
