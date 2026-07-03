@@ -47,6 +47,8 @@ fun SavedListScreen(
     onBack: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<SavedItem?>(null) }
+    // Position count shown flush-right in the header (e.g. "1–5 / 24"); driven by the rail.
+    var rangeText by remember { mutableStateOf<String?>(null) }
     val title = when (form) {
         Form.PLAYLIST -> stringResource(R.string.home_playlists)
         Form.SONG -> stringResource(R.string.home_songs)
@@ -64,7 +66,19 @@ fun SavedListScreen(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenHeader(title = title, onBack = onBack)
+        ScreenHeader(
+            title = title,
+            onBack = onBack,
+            trailing = if (items.isNotEmpty() && rangeText != null) {
+                {
+                    Text(
+                        text = rangeText!!,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else null,
+        )
 
         if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -78,6 +92,7 @@ fun SavedListScreen(
                 items = items,
                 resetKey = items.firstOrNull()?.id,
                 modifier = Modifier.weight(1f),
+                onRangeChange = { rangeText = it },
             ) { item, requesters ->
                 SavedRow(
                     item = item,

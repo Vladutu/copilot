@@ -9,10 +9,12 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,6 +47,7 @@ import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.theme.LocalTileAppearance
 import kotlinx.coroutines.launch
 
 /**
@@ -157,9 +160,12 @@ private fun PlayMixButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val appearance = LocalTileAppearance.current
+    // Full-width bar pinned at the tile bottom (redesign-spec §3d), knob stop 1.
     Surface(
         modifier = Modifier
-            .size(56.dp)
+            .fillMaxWidth()
+            .height(52.dp)
             .let { if (focus != null) it.focusRequester(focus) else it }
             // Always enabled: disabling would drop knob focus mid-launch. Reentry
             // while busy is guarded in playMix().
@@ -168,20 +174,29 @@ private fun PlayMixButton(
                 indication = LocalIndication.current,
                 onClick = onClick,
             ),
-        shape = CircleShape,
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant,
-        border = if (focused) BorderStroke(4.dp, MaterialTheme.colorScheme.primary)
+        border = if (focused) BorderStroke(appearance.focusBorderWidth, MaterialTheme.colorScheme.primary)
                  else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (busy) {
-                CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else {
                 Icon(
                     imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = "Play mix",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(28.dp),
+                )
+                Text(
+                    text = stringResource(R.string.discover_play_mix),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }

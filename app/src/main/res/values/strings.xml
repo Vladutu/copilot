@@ -66,4 +66,8 @@
     <string name="settings_regenerate_confirm">Regenerate</string>
     <string name="settings_regenerate_cancel">Cancel</string>
     <string name="settings_qr_close">Close</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_offline">Offline</string>
+    <string name="discover_play_mix">Play mix</string>
 </resources>

@@ -15,8 +15,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -39,15 +41,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 
+// Big content visual (real artwork / app icon) fills a square; a plain Material glyph
+// stays small. Sized for glancing while driving (see redesign-spec §2a).
+private val ContentVisualSize = 170.dp
+private val IconVisualSize = 60.dp
+
 /**
- * The one inline tile every grid uses: a square left visual (thumbnail / icon /
- * app icon / drawable) and a big label on the right. Optional [trailing] slot is
- * overlaid at the right edge as an independent focusable (Discover's ▶ mix button).
+ * The one tile every rail uses: a **vertical** card — a visual on top (real artwork,
+ * app icon, or a Material/drawable glyph) and a big centered label below. Optional
+ * [trailing] slot is pinned full-width at the tile bottom as an independent focusable
+ * (Discover's ▶ Play mix button — see redesign-spec §3d).
  *
  * Pure presentation: callers that need a network/disk image load it themselves and
  * pass the ready [thumbnail]. Knob focus: callers attach the FocusRequester they were
@@ -78,8 +87,10 @@ fun MediaRowTile(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val appearance = LocalTileAppearance.current
+    val shape = MaterialTheme.shapes.large
+    val primary = MaterialTheme.colorScheme.primary
     val border = if (isFocused) {
-        BorderStroke(appearance.focusBorderWidth, MaterialTheme.colorScheme.primary)
+        BorderStroke(appearance.focusBorderWidth, primary)
     } else {
         BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
@@ -88,6 +99,14 @@ fun MediaRowTile(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
+                // Soft amber glow when focused (redesign-spec §2a).
+                .then(
+                    if (isFocused) {
+                        Modifier.shadow(16.dp, shape, spotColor = primary, ambientColor = primary)
+                    } else {
+                        Modifier
+                    },
+                )
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 .combinedClickable(
                     interactionSource = interactionSource,
@@ -95,17 +114,26 @@ fun MediaRowTile(
                     onClick = onClick,
                     onLongClick = onLongPress,
                 ),
-            shape = MaterialTheme.shapes.large,
+            shape = shape,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             border = border,
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Reserve room at the bottom for the pinned trailing slot so the
+                    // centered content never sits under it.
+                    .padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 20.dp,
+                        bottom = if (trailing != null) 76.dp else 20.dp,
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             ) {
-                LeftVisual(
+                TileVisual(
                     busy = busy,
                     thumbnail = thumbnail,
                     appIcon = appIcon,
@@ -123,15 +151,16 @@ fun MediaRowTile(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = if (trailing != null) 64.dp else 0.dp),
+                    textAlign = TextAlign.Center,
                 )
             }
         }
         if (trailing != null) {
             Box(
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             ) {
                 trailing()
             }
@@ -140,7 +169,7 @@ fun MediaRowTile(
 }
 
 @Composable
-private fun LeftVisual(
+private fun TileVisual(
     busy: Boolean,
     thumbnail: ImageBitmap?,
     appIcon: Bitmap?,
@@ -149,7 +178,11 @@ private fun LeftVisual(
     @DrawableRes fallbackRes: Int?,
     label: String,
 ) {
-    Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
+    // Real artwork / app-icon / drawable fallback are "content" → big square.
+    // A plain Material vector glyph stays small.
+    val isContent = thumbnail != null || appIcon != null || fallbackRes != null
+    val size = if (isContent) ContentVisualSize else IconVisualSize
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
             busy -> CircularProgressIndicator(
                 modifier = Modifier.size(48.dp),

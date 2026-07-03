@@ -29,7 +29,7 @@ import com.vladutu.copilot.ui.lists.PageIndicator
 import kotlinx.coroutines.launch
 
 /**
- * Shared paged tile grid driven by the BMW knob. Extracted from SavedListScreen so
+ * Shared paged tile rail driven by the BMW knob. Extracted from SavedListScreen so
  * every screen inherits the same already-debugged focus behavior:
  *
  *  - `focusedStop` is the single source of truth; a LaunchedEffect pushes focus to
@@ -40,9 +40,14 @@ import kotlinx.coroutines.launch
  *  - Page edges: last stop + right → next page first stop; first stop + left →
  *    previous page last stop. Stale positions after deletions are clamped.
  *
+ * The rail is a single horizontal row of [pageSize] big tiles (redesign-spec §2b).
  * [tile] receives the item and, when its page is the settled one, [stopsPerItem]
  * FocusRequesters in item-major knob order (all stops of item N before item N+1).
  * On non-settled pages it receives null and must not attach requesters.
+ *
+ * [onRangeChange] reports the visible 1-based item range (e.g. "1–5 / 24") whenever the
+ * page or the list changes, so the caller's header can show a position count without
+ * KnobPagedGrid owning the header.
  */
 @Composable
 fun <T> KnobPagedGrid(
@@ -50,8 +55,8 @@ fun <T> KnobPagedGrid(
     resetKey: Any?,
     modifier: Modifier = Modifier,
     stopsPerItem: Int = 1,
-    pageSize: Int = 6,
-    columns: Int = 3,
+    pageSize: Int = 5,
+    onRangeChange: ((String) -> Unit)? = null,
     tile: @Composable (item: T, focusRequesters: List<FocusRequester>?) -> Unit,
 ) {
     val nav = remember(items.size, pageSize, stopsPerItem) {
@@ -73,6 +78,15 @@ fun <T> KnobPagedGrid(
         if (items.isNotEmpty()) {
             val pos = nav.clamp(KnobPos(pagerState.settledPage, focusedStop))
             runCatching { tileFocus[pos.stop].requestFocus() }
+        }
+    }
+
+    // Report the visible item range for the caller's header count.
+    LaunchedEffect(pagerState.currentPage, items.size, pageSize) {
+        if (onRangeChange != null && items.isNotEmpty()) {
+            val start = pagerState.currentPage * pageSize + 1
+            val end = minOf((pagerState.currentPage + 1) * pageSize, items.size)
+            onRangeChange("$start–$end / ${items.size}")
         }
     }
 
@@ -110,23 +124,18 @@ fun <T> KnobPagedGrid(
         ) { page ->
             val start = page * pageSize
             val pageItems = items.subList(start, minOf(start + pageSize, items.size))
-            val rowCount = (pageSize + columns - 1) / columns
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                repeat(rowCount) { row ->
-                    Row(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        for (col in 0 until columns) {
-                            val i = row * columns + col
-                            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                                if (i < pageItems.size) {
-                                    val requesters = if (page == pagerState.settledPage) {
-                                        List(stopsPerItem) { s -> tileFocus[i * stopsPerItem + s] }
-                                    } else null
-                                    tile(pageItems[i], requesters)
-                                }
-                            }
+            // One horizontal rail of pageSize tiles, weighted so they share the row.
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                for (i in 0 until pageSize) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                        if (i < pageItems.size) {
+                            val requesters = if (page == pagerState.settledPage) {
+                                List(stopsPerItem) { s -> tileFocus[i * stopsPerItem + s] }
+                            } else null
+                            tile(pageItems[i], requesters)
                         }
                     }
                 }

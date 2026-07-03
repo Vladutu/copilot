@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.lists.DotStrip
 
 // Playlists + Songs + Time Machine + Discover + Radio + Liked; knob walks all six.
 private const val TILE_COUNT = 6
-private const val COLUMNS = 3
 
 private data class MusicTile(
     val labelRes: Int,
@@ -107,32 +109,27 @@ fun MusicScreen(
         // not a knob stop — knob BACK pops the route the same way.
         ScreenHeader(title = stringResource(R.string.home_music), onBack = onBack)
 
-        // 3-column grid: Playlists/Songs/Time Machine, then Discover/Radio/Liked.
-        // Each row keeps weight 1f so tile size stays consistent; six tiles fill
-        // the 3×2 grid exactly.
-        tiles.chunked(COLUMNS).forEachIndexed { rowIndex, rowTiles ->
-            Row(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                for (col in 0 until COLUMNS) {
-                    val tile = rowTiles.getOrNull(col)
-                    if (tile != null) {
-                        val globalIndex = rowIndex * COLUMNS + col
-                        MediaRowTile(
-                            modifier = Modifier.weight(1f).fillMaxSize(),
-                            focusRequester = tileFocus[globalIndex],
-                            label = stringResource(tile.labelRes),
-                            onClick = tile.onClick,
-                            fallbackIcon = tile.icon,
-                            busy = tile.busy,
-                            maxLines = 1,
-                        )
-                    } else {
-                        Box(modifier = Modifier.weight(1f).fillMaxSize())
-                    }
-                }
+        // Fixed menu → one horizontal rail of six vertical tiles (redesign-spec §3c).
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            tiles.forEachIndexed { index, tile ->
+                MediaRowTile(
+                    modifier = Modifier.weight(1f).fillMaxSize(),
+                    focusRequester = tileFocus[index],
+                    label = stringResource(tile.labelRes),
+                    onClick = tile.onClick,
+                    fallbackIcon = tile.icon,
+                    busy = tile.busy,
+                    maxLines = 1,
+                )
             }
+        }
+
+        // Dot strip reflects which tile the knob is on (redesign-spec §2c).
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            DotStrip(count = TILE_COUNT, current = focusedIndex)
         }
     }
 }
