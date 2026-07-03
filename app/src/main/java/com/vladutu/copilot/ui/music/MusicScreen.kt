@@ -1,11 +1,8 @@
 package com.vladutu.copilot.ui.music
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -15,29 +12,19 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
+import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.ScreenHeader
-import com.vladutu.copilot.ui.lists.DotStrip
 
-// Playlists + Songs + Time Machine + Discover + Radio + Liked; knob walks all six.
-private const val TILE_COUNT = 6
+// Playlists + Songs + Time Machine + Discover + Radio + Liked. Six tiles were too
+// cramped on one 1440px row, so the fixed menu now pages 4-at-a-time through the
+// shared knob rail (redesign-spec §3c) — same knob/dot behavior as every list screen.
+private const val MUSIC_PAGE_SIZE = 4
 
 private data class MusicTile(
     val labelRes: Int,
@@ -57,15 +44,7 @@ fun MusicScreen(
     onOpenLiked: () -> Unit,
     onBack: () -> Unit,
 ) {
-    // Knob twist (DPAD_LEFT/RIGHT) walks the six tiles linearly in reading order:
-    // Playlists → Songs → Time Machine → Discover → Radio → Liked.
-    val tileFocus = remember { List(TILE_COUNT) { FocusRequester() } }
-    var focusedIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(focusedIndex) {
-        runCatching { tileFocus[focusedIndex].requestFocus() }
-    }
-
-    // Order must match the knob reading order above.
+    // Knob reading order: Playlists → Songs → Time Machine → Discover → Radio → Liked.
     val tiles = listOf(
         MusicTile(R.string.home_playlists, Icons.AutoMirrored.Filled.PlaylistPlay, onOpenPlaylists),
         MusicTile(R.string.home_songs, Icons.Filled.MusicNote, onOpenSongs),
@@ -81,55 +60,29 @@ fun MusicScreen(
     )
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                // Always consume Left/Right so focusedIndex stays the single source
-                // of truth. Returning false at the ends would hand the event to
-                // Compose's default directional focus search, which moves the
-                // on-screen focus independently of focusedIndex — the two desync and
-                // the knob appears to bounce back into earlier tiles. Clamp instead.
-                when (event.key) {
-                    Key.DirectionRight -> {
-                        if (focusedIndex < TILE_COUNT - 1) focusedIndex++
-                        true
-                    }
-                    Key.DirectionLeft -> {
-                        if (focusedIndex > 0) focusedIndex--
-                        true
-                    }
-                    else -> false
-                }
-            },
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Standard sub-screen header: back button + centered title. Touch-only,
         // not a knob stop — knob BACK pops the route the same way.
         ScreenHeader(title = stringResource(R.string.home_music), onBack = onBack)
 
-        // Fixed menu → one horizontal rail of six vertical tiles (redesign-spec §3c).
-        Row(
-            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            tiles.forEachIndexed { index, tile ->
-                MediaRowTile(
-                    modifier = Modifier.weight(1f).fillMaxSize(),
-                    focusRequester = tileFocus[index],
-                    label = stringResource(tile.labelRes),
-                    onClick = tile.onClick,
-                    fallbackIcon = tile.icon,
-                    busy = tile.busy,
-                    maxLines = 2,
-                )
-            }
-        }
-
-        // Dot strip reflects which tile the knob is on (redesign-spec §2c).
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            DotStrip(count = TILE_COUNT, current = focusedIndex)
+        // resetKey is a constant: the menu never changes, so the knob just stays put.
+        KnobPagedGrid(
+            items = tiles,
+            resetKey = "music",
+            pageSize = MUSIC_PAGE_SIZE,
+            modifier = Modifier.weight(1f),
+        ) { tile, requesters ->
+            MediaRowTile(
+                modifier = Modifier.fillMaxSize(),
+                focusRequester = requesters?.get(0),
+                label = stringResource(tile.labelRes),
+                onClick = tile.onClick,
+                fallbackIcon = tile.icon,
+                busy = tile.busy,
+                maxLines = 2,
+            )
         }
     }
 }

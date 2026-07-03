@@ -12,9 +12,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +25,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.ui.lists.PageIndicator
-import kotlinx.coroutines.launch
 
 /**
  * Shared paged tile rail driven by the BMW knob. Extracted from SavedListScreen so
@@ -64,55 +62,50 @@ fun <T> KnobPagedGrid(
     }
     val pagerState = rememberPagerState(pageCount = { nav.pageCount })
     val tileFocus = remember(pageSize, stopsPerItem) { List(pageSize * stopsPerItem) { FocusRequester() } }
-    var focusedStop by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
+
+    // Single source of truth: the knob's page + stop. We drive the pager and the focus
+    // FROM this state and never read pagerState.currentPage back into our logic. During a
+    // page animation currentPage flips at the halfway point while the old focusedStop is
+    // still in place, so a fast second twist used to compute a bogus same-page move and
+    // then the settled-page refocus effect would yank focus back to the old page — the
+    // "goes to the 2nd page then bounces back to the 1st on fast rotation" bug.
+    var pos by remember { mutableStateOf(KnobPos(0, 0)) }
 
     // resetKey change (top item changed / new list) → land back on page 0, stop 0.
-    LaunchedEffect(resetKey) {
-        if (nav.pageCount > 0) pagerState.animateScrollToPage(0)
-        focusedStop = 0
+    LaunchedEffect(resetKey) { pos = KnobPos(0, 0) }
+
+    // Items shrank (deletion) → repair a now-stale position onto a valid stop.
+    LaunchedEffect(items) { pos = nav.clamp(pos) }
+
+    // Drive the pager from our page. Relaunching on a page change cancels any in-flight
+    // scroll, so a rapid burst of twists just animates to the latest target page once.
+    LaunchedEffect(pos.page) {
+        if (nav.pageCount > 0) pagerState.animateScrollToPage(pos.page)
     }
 
-    // Refocus whenever the stop, settled page, or items change; clamp stale stops first.
-    LaunchedEffect(focusedStop, pagerState.settledPage, items) {
-        if (items.isNotEmpty()) {
-            val pos = nav.clamp(KnobPos(pagerState.settledPage, focusedStop))
+    // Focus follows our stop, but only once the pager has actually settled on our page:
+    // requesters are attached only to the settled page's tiles (see below), so requesting
+    // while a scroll is still animating would target the old page and drag focus backward.
+    LaunchedEffect(pos, pagerState.settledPage) {
+        if (items.isNotEmpty() && pagerState.settledPage == pos.page) {
             runCatching { tileFocus[pos.stop].requestFocus() }
         }
     }
 
     // Report the visible item range for the caller's header count.
-    LaunchedEffect(pagerState.currentPage, items.size, pageSize) {
+    LaunchedEffect(pos.page, items.size, pageSize) {
         if (onRangeChange != null && items.isNotEmpty()) {
-            val start = pagerState.currentPage * pageSize + 1
-            val end = minOf((pagerState.currentPage + 1) * pageSize, items.size)
+            val start = pos.page * pageSize + 1
+            val end = minOf((pos.page + 1) * pageSize, items.size)
             onRangeChange("$start–$end / ${items.size}")
-        }
-    }
-
-    fun moveFocus(step: (KnobPos) -> KnobPos) {
-        val pos = step(nav.clamp(KnobPos(pagerState.currentPage, focusedStop)))
-        if (pos.page != pagerState.currentPage) {
-            scope.launch {
-                pagerState.animateScrollToPage(pos.page)
-                focusedStop = pos.stop
-            }
-        } else {
-            focusedStop = pos.stop
         }
     }
 
     val keyHandler = Modifier.onPreviewKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         when (event.key) {
-            Key.DirectionRight -> {
-                moveFocus(nav::next)
-                true
-            }
-            Key.DirectionLeft -> {
-                moveFocus(nav::prev)
-                true
-            }
+            Key.DirectionRight -> { pos = nav.next(nav.clamp(pos)); true }
+            Key.DirectionLeft -> { pos = nav.prev(nav.clamp(pos)); true }
             else -> false
         }
     }
@@ -145,7 +138,7 @@ fun <T> KnobPagedGrid(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            PageIndicator(pageCount = nav.pageCount, currentPage = pagerState.currentPage)
+            PageIndicator(pageCount = nav.pageCount, currentPage = pos.page)
         }
     }
 }
