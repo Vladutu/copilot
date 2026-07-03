@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.17.3] - 2026-07-03
+
+### Fixed
+- Sync page dots/focus when swiping the pager by finger
+
 ## [0.17.2] - 2026-07-03
 
 ### Added
@@ -230,6 +235,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.17.3]: https://github.com/Vladutu/copilot/compare/v0.17.2...v0.17.3
 [0.17.2]: https://github.com/Vladutu/copilot/compare/v0.17.1...v0.17.2
 [0.17.1]: https://github.com/Vladutu/copilot/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/Vladutu/copilot/compare/v0.16.2...v0.17.0
