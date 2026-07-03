@@ -166,6 +166,7 @@ private fun BrowsePlaylistRow(
         focusRequester = focus,
         thumbnail = bitmap,
         fallbackRes = R.drawable.ic_music_note,
+        coverArt = true,
     )
 }
 

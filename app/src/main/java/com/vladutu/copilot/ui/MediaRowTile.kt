@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,16 +41,18 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 
-// Big content visual (real artwork / app icon) fills a square; a plain Material glyph
-// stays small. Sized for glancing while driving (see redesign-spec §2a).
-private val ContentVisualSize = 170.dp
+// Real cover art fills a big square; everything else (app icon, Material/drawable glyph)
+// stays a small icon. Sized for glancing while driving (see redesign-spec §2a).
+private val CoverVisualSize = 170.dp
 private val IconVisualSize = 60.dp
 
 /**
@@ -57,6 +60,15 @@ private val IconVisualSize = 60.dp
  * app icon, or a Material/drawable glyph) and a big centered label below. Optional
  * [trailing] slot is pinned full-width at the tile bottom as an independent focusable
  * (Discover's ▶ Play mix button — see redesign-spec §3d).
+ *
+ * [coverArt] picks the visual size: `true` → the big [CoverVisualSize] square used by
+ * playlist/song covers; `false` (default) → the small [IconVisualSize] used by app icons
+ * and glyphs. Callers on a given screen pass the same value so every tile's visual has
+ * the same width and the icons line up on one level.
+ *
+ * The label sits in a fixed slot of [maxLines] lines regardless of the actual label
+ * length, so a tile whose label wraps to a second line doesn't push its visual up — all
+ * visuals on a screen stay on the same level.
  *
  * Pure presentation: callers that need a network/disk image load it themselves and
  * pass the ready [thumbnail]. Knob focus: callers attach the FocusRequester they were
@@ -78,6 +90,7 @@ fun MediaRowTile(
     packageName: String? = null,
     busy: Boolean = false,
     maxLines: Int = 2,
+    coverArt: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -94,6 +107,9 @@ fun MediaRowTile(
     } else {
         BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
+    val visualSize = if (coverArt) CoverVisualSize else IconVisualSize
+    // Fixed label slot = maxLines lines, so wrapping never shifts the visual's level.
+    val labelSlotHeight = with(LocalDensity.current) { appearance.lineHeight.toDp() * maxLines }
 
     Box(modifier = modifier.fillMaxSize()) {
         Surface(
@@ -134,6 +150,7 @@ fun MediaRowTile(
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             ) {
                 TileVisual(
+                    size = visualSize,
                     busy = busy,
                     thumbnail = thumbnail,
                     appIcon = appIcon,
@@ -142,17 +159,22 @@ fun MediaRowTile(
                     fallbackRes = fallbackRes,
                     label = label,
                 )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = appearance.fontSize,
-                        lineHeight = appearance.lineHeight,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = maxLines,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(labelSlotHeight),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = appearance.fontSize,
+                            lineHeight = appearance.lineHeight,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = maxLines,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
         if (trailing != null) {
@@ -170,6 +192,7 @@ fun MediaRowTile(
 
 @Composable
 private fun TileVisual(
+    size: Dp,
     busy: Boolean,
     thumbnail: ImageBitmap?,
     appIcon: Bitmap?,
@@ -178,10 +201,6 @@ private fun TileVisual(
     @DrawableRes fallbackRes: Int?,
     label: String,
 ) {
-    // Real artwork / app-icon / drawable fallback are "content" → big square.
-    // A plain Material vector glyph stays small.
-    val isContent = thumbnail != null || appIcon != null || fallbackRes != null
-    val size = if (isContent) ContentVisualSize else IconVisualSize
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
             busy -> CircularProgressIndicator(

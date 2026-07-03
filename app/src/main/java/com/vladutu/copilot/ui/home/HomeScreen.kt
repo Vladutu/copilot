@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -67,6 +69,7 @@ fun HomeScreen(
     state: UiState,
     nowPlaying: NowPlaying?,
     isLiked: Boolean,
+    likedCount: Int,
     onLike: () -> Unit,
     onOpenWaze: () -> Unit,
     onOpenMaps: () -> Unit,
@@ -177,7 +180,7 @@ fun HomeScreen(
             NowPlayingBar(
                 nowPlaying = nowPlaying,
                 isLiked = isLiked,
-                stopNumber = tileCount,
+                likedCount = likedCount,
                 heartFocus = heartFocus,
                 onLike = onLike,
             )
@@ -222,7 +225,7 @@ private fun TopBar(
 private fun NowPlayingBar(
     nowPlaying: NowPlaying,
     isLiked: Boolean,
-    stopNumber: Int,
+    likedCount: Int,
     heartFocus: FocusRequester,
     onLike: () -> Unit,
 ) {
@@ -310,16 +313,18 @@ private fun NowPlayingBar(
                         modifier = Modifier.size(30.dp),
                     )
                 }
-                // Stop-number badge.
+                // Liked-songs count badge (pill so 2–3 digits fit).
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
+                        .heightIn(min = 20.dp)
+                        .widthIn(min = 20.dp)
                         .clip(CircleShape)
-                        .background(primary),
+                        .background(primary)
+                        .padding(horizontal = 6.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = stopNumber.toString(),
+                        text = if (likedCount > 99) "99+" else likedCount.toString(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary,

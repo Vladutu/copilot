@@ -149,6 +149,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 state = uiState,
                 nowPlaying = nowPlaying,
                 isLiked = isLiked,
+                likedCount = liked.size,
                 onLike = {
                     nowPlaying?.let { np ->
                         app.applicationScope.launch { app.locator.likedSongsRepository.like(np) }

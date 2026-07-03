@@ -158,5 +158,7 @@ private fun SavedRow(
             Form.PLAYLIST, Form.SONG -> R.drawable.ic_music_note
             else -> null
         },
+        // Playlists/Songs show big cover art; Places/Radio use a small glyph.
+        coverArt = item.form == Form.PLAYLIST || item.form == Form.SONG,
     )
 }

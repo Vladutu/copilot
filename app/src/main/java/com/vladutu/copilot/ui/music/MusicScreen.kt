@@ -122,7 +122,7 @@ fun MusicScreen(
                     onClick = tile.onClick,
                     fallbackIcon = tile.icon,
                     busy = tile.busy,
-                    maxLines = 1,
+                    maxLines = 2,
                 )
             }
         }
