@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
+import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 
 // Playlists + Songs + Time Machine + Discover + Radio + Liked. Six tiles were too
@@ -42,6 +44,7 @@ fun MusicScreen(
     onOpenDiscover: () -> Unit,
     onOpenRadio: () -> Unit,
     onOpenLiked: () -> Unit,
+    nowPlaying: NowPlaying?,
     onBack: () -> Unit,
 ) {
     // Knob reading order: Playlists → Songs → Time Machine → Discover → Radio → Liked.
@@ -60,7 +63,8 @@ fun MusicScreen(
     )
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        // bottom = 0: the now-playing strip sits flush at the screen edge.
+        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Standard sub-screen header: back button + centered title. Touch-only,
@@ -84,5 +88,7 @@ fun MusicScreen(
                 maxLines = 2,
             )
         }
+
+        NowPlayingStrip(nowPlaying = nowPlaying)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Place
@@ -30,8 +31,10 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
+import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,6 +45,7 @@ fun SavedListScreen(
     items: List<SavedItem>,
     form: Form,
     artworkCache: ArtworkCache,
+    nowPlaying: NowPlaying?,
     onTap: (SavedItem) -> Unit,
     onDelete: (SavedItem) -> Unit,
     onBack: () -> Unit,
@@ -63,7 +67,8 @@ fun SavedListScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        // bottom = 0: the now-playing strip sits flush at the screen edge.
+        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(
@@ -81,7 +86,7 @@ fun SavedListScreen(
         )
 
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(text = emptyText, style = MaterialTheme.typography.titleLarge)
             }
         } else {
@@ -103,6 +108,8 @@ fun SavedListScreen(
                 )
             }
         }
+
+        NowPlayingStrip(nowPlaying = nowPlaying)
     }
 
     pendingDelete?.let { target ->

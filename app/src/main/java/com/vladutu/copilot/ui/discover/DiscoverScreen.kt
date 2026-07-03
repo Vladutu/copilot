@@ -44,8 +44,10 @@ import com.vladutu.copilot.discover.DiscoverRepository
 import com.vladutu.copilot.discover.SearchException
 import com.vladutu.copilot.discover.YtMusicUrls
 import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 import kotlinx.coroutines.launch
@@ -63,6 +65,7 @@ fun DiscoverScreen(
     onBrowse: (String) -> Unit,
     onDelete: (String) -> Unit,
     onLaunched: () -> Unit,
+    nowPlaying: NowPlaying?,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -98,13 +101,14 @@ fun DiscoverScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        // bottom = 0: the now-playing strip sits flush at the screen edge.
+        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(title = stringResource(R.string.home_discover), onBack = onBack)
 
         if (categories.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(text = stringResource(R.string.empty_discover), style = MaterialTheme.typography.titleLarge)
             }
         } else {
@@ -131,6 +135,8 @@ fun DiscoverScreen(
                 )
             }
         }
+
+        NowPlayingStrip(nowPlaying = nowPlaying)
     }
 
     pendingDelete?.let { target ->

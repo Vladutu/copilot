@@ -1,7 +1,6 @@
 package com.vladutu.copilot.ui.home
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,16 +48,15 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.MediaRowTile
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.lists.DotStrip
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -100,12 +98,9 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(
-                start = 24.dp,
-                end = 24.dp,
-                top = 12.dp,
-                bottom = if (songPlaying) 0.dp else 24.dp,
-            )
+            // bottom = 0: the now-playing strip is always the last child and sits flush
+            // against the screen edge.
+            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 0.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
@@ -175,16 +170,17 @@ fun HomeScreen(
             )
         }
 
-        // Now-Playing + Like bar — Home only, only while a song is playing.
-        if (nowPlaying != null) {
-            NowPlayingBar(
-                nowPlaying = nowPlaying,
-                isLiked = isLiked,
-                likedCount = likedCount,
-                heartFocus = heartFocus,
-                onLike = onLike,
-            )
-        }
+        // Persistent now-playing strip (shared across all screens). The Like heart is
+        // Home-only and appears as the last knob stop while a song plays; Home keeps
+        // ownership of its focus, so the strip's likeControl slot just renders it.
+        NowPlayingStrip(
+            nowPlaying = nowPlaying,
+            likeControl = if (songPlaying) {
+                { LikeHeart(isLiked = isLiked, likedCount = likedCount, heartFocus = heartFocus, onLike = onLike) }
+            } else {
+                null
+            },
+        )
     }
 }
 
@@ -221,9 +217,12 @@ private fun TopBar(
     }
 }
 
+/**
+ * Home-only Like control that slots into the now-playing strip: the last knob stop
+ * while a song plays — amber ring + liked-count pill badge. Home owns [heartFocus].
+ */
 @Composable
-private fun NowPlayingBar(
-    nowPlaying: NowPlaying,
+private fun LikeHeart(
     isLiked: Boolean,
     likedCount: Int,
     heartFocus: FocusRequester,
@@ -233,104 +232,54 @@ private fun NowPlayingBar(
     val heartFocused by heartInteraction.collectIsFocusedAsState()
     val primary = MaterialTheme.colorScheme.primary
 
-    Column {
-        // Top border (redesign-spec §3a).
+    Box(contentAlignment = Alignment.TopEnd) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outline),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(96.dp)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // Album-art slot: the music model carries no artwork, so a music-note glyph
-            // stands in (per product decision 2026-07-03).
-            Image(
-                painter = painterResource(R.drawable.ic_music_note),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(10.dp),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = nowPlaying.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                .size(64.dp)
+                .then(
+                    if (heartFocused) {
+                        Modifier.shadow(16.dp, CircleShape, spotColor = primary, ambientColor = primary)
+                    } else {
+                        Modifier
+                    },
                 )
-                val artist = nowPlaying.artist
-                if (!artist.isNullOrBlank()) {
-                    Text(
-                        text = artist,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            // Like heart — the last knob stop; amber ring, "N" stop badge.
-            Box(contentAlignment = Alignment.TopEnd) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .then(
-                            if (heartFocused) {
-                                Modifier.shadow(16.dp, CircleShape, spotColor = primary, ambientColor = primary)
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .clip(CircleShape)
-                        .border(
-                            width = if (heartFocused) 4.dp else 2.dp,
-                            color = primary,
-                            shape = CircleShape,
-                        )
-                        .focusRequester(heartFocus)
-                        .clickable(
-                            interactionSource = heartInteraction,
-                            indication = LocalIndication.current,
-                            onClick = onLike,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = stringResource(R.string.like_song),
-                        tint = primary,
-                        modifier = Modifier.size(30.dp),
-                    )
-                }
-                // Liked-songs count badge (pill so 2–3 digits fit).
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = 20.dp)
-                        .widthIn(min = 20.dp)
-                        .clip(CircleShape)
-                        .background(primary)
-                        .padding(horizontal = 6.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = if (likedCount > 99) "99+" else likedCount.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+                .clip(CircleShape)
+                .border(
+                    width = if (heartFocused) 4.dp else 2.dp,
+                    color = primary,
+                    shape = CircleShape,
+                )
+                .focusRequester(heartFocus)
+                .clickable(
+                    interactionSource = heartInteraction,
+                    indication = LocalIndication.current,
+                    onClick = onLike,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = stringResource(R.string.like_song),
+                tint = primary,
+                modifier = Modifier.size(30.dp),
+            )
+        }
+        // Liked-songs count badge (pill so 2–3 digits fit).
+        Box(
+            modifier = Modifier
+                .heightIn(min = 20.dp)
+                .widthIn(min = 20.dp)
+                .clip(CircleShape)
+                .background(primary)
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = if (likedCount > 99) "99+" else likedCount.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
         }
     }
 }

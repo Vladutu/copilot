@@ -36,6 +36,7 @@
     <string name="home_liked">Liked</string>
     <string name="empty_liked">No liked songs yet</string>
     <string name="like_song">Like this song</string>
+    <string name="now_playing_idle">Nothing playing</string>
     <string name="liked_saved">Saved</string>
     <string name="liked_copied">Copied</string>
     <string name="copy_list">Copy</string>

@@ -30,6 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.liked.LikedSong
+import com.vladutu.copilot.nowplaying.NowPlaying
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 
 /**
@@ -41,6 +43,7 @@ import com.vladutu.copilot.ui.ScreenHeader
 @Composable
 fun LikedSongsScreen(
     items: List<LikedSong>,
+    nowPlaying: NowPlaying?,
     onClearAll: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -49,13 +52,14 @@ fun LikedSongsScreen(
     var confirmClear by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        // bottom = 0: the now-playing strip sits flush at the screen edge.
+        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(title = stringResource(R.string.home_liked), onBack = onBack)
 
         if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(text = stringResource(R.string.empty_liked), style = MaterialTheme.typography.titleLarge)
             }
         } else {
@@ -88,6 +92,8 @@ fun LikedSongsScreen(
                 }
             }
         }
+
+        NowPlayingStrip(nowPlaying = nowPlaying)
     }
 
     if (confirmClear) {

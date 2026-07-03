@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,8 +35,10 @@ import com.vladutu.copilot.discover.FoundPlaylist
 import com.vladutu.copilot.discover.SearchException
 import com.vladutu.copilot.discover.YtMusicUrls
 import com.vladutu.copilot.launch.AppLauncher
+import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
+import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,6 +58,7 @@ fun BrowseResultsScreen(
     okHttp: OkHttpClient,
     launcher: AppLauncher,
     onLaunched: () -> Unit,
+    nowPlaying: NowPlaying?,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -73,22 +77,23 @@ fun BrowseResultsScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        // bottom = 0: the now-playing strip sits flush at the screen edge.
+        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(title = keyword, onBack = onBack)
 
         when (val s = state) {
             is BrowseState.Loading -> Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
 
-            is BrowseState.Failed -> RetryBox(onRetry = { attempt++ })
+            is BrowseState.Failed -> RetryBox(modifier = Modifier.weight(1f), onRetry = { attempt++ })
 
             is BrowseState.Loaded -> {
                 if (s.playlists.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
                             text = stringResource(R.string.discover_no_results),
                             style = MaterialTheme.typography.titleLarge,
@@ -116,15 +121,17 @@ fun BrowseResultsScreen(
                 }
             }
         }
+
+        NowPlayingStrip(nowPlaying = nowPlaying)
     }
 }
 
 /** Failure state with a knob-reachable Retry: focused on entry so a knob press retries. */
 @Composable
-private fun RetryBox(onRetry: () -> Unit) {
+private fun RetryBox(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     val retryFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { retryFocus.requestFocus() } }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),

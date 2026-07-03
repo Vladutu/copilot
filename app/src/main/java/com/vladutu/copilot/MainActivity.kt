@@ -118,6 +118,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     val app = context.applicationContext as CopilotApp
     val launcher = remember { AppLauncher(context) }
 
+    // Now-playing is shown by the persistent bottom strip on every screen, so collect it
+    // once here and thread it in rather than re-collecting per route.
+    val nowPlaying by MediaListenerService.nowPlaying.collectAsStateWithLifecycle()
+
     // Tile appearance is read deep in the tree by every grid tile; provide it once here
     // from the persisted settings so the screens themselves stay plumbing-free.
     val tileFontSize by app.locator.settingsStore.tileFontSizeFlow
@@ -141,7 +145,6 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
-            val nowPlaying by MediaListenerService.nowPlaying.collectAsStateWithLifecycle()
             val liked by app.locator.likedSongsRepository.items().collectAsStateWithLifecycle(emptyList())
             val isLiked = nowPlaying?.let { np -> liked.any { it.matches(np.title, np.artist) } } ?: false
             val savedMsg = stringResource(R.string.liked_saved)
@@ -202,6 +205,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onOpenDiscover = { nav.navigate("discover") },
                 onOpenRadio = { nav.navigate("list/radio") },
                 onOpenLiked = { nav.navigate("liked") },
+                nowPlaying = nowPlaying,
                 onBack = { nav.popBackStack() },
             )
         }
@@ -211,6 +215,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(emptyList())
             LikedSongsScreen(
                 items = liked,
+                nowPlaying = nowPlaying,
                 onClearAll = {
                     app.applicationScope.launch { app.locator.likedSongsRepository.clearAll() }
                 },
@@ -227,6 +232,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 items = items,
                 form = form,
                 artworkCache = app.locator.artworkCache,
+                nowPlaying = nowPlaying,
                 onTap = { item ->
                     launchOrReport(launcher.replay(item)) {
                         app.applicationScope.launch {
@@ -256,6 +262,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                     app.applicationScope.launch { app.locator.categoryStore.delete(keyword) }
                 },
                 onLaunched = onLeftToOtherApp,
+                nowPlaying = nowPlaying,
                 onBack = { nav.popBackStack() },
             )
         }
@@ -268,6 +275,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 okHttp = app.locator.okHttp,
                 launcher = launcher,
                 onLaunched = onLeftToOtherApp,
+                nowPlaying = nowPlaying,
                 onBack = { nav.popBackStack() },
             )
         }
