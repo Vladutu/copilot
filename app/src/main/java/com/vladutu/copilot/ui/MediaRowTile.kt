@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -107,6 +108,13 @@ fun MediaRowTile(
     } else {
         BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
+    // Amber wash: the focused tile's whole face tints toward primary, so the knob
+    // position reads at a glance — not just from the border. Toggleable in Settings.
+    val surfaceColor = if (isFocused && appearance.focusFill) {
+        primary.copy(alpha = 0.20f).compositeOver(MaterialTheme.colorScheme.surface)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
     val visualSize = if (coverArt) CoverVisualSize else IconVisualSize
     // Fixed label slot = maxLines lines, so wrapping never shifts the visual's level.
     val labelSlotHeight = with(LocalDensity.current) { appearance.lineHeight.toDp() * maxLines }
@@ -131,7 +139,7 @@ fun MediaRowTile(
                     onLongClick = onLongPress,
                 ),
             shape = shape,
-            color = MaterialTheme.colorScheme.surface,
+            color = surfaceColor,
             tonalElevation = 0.dp,
             border = border,
         ) {

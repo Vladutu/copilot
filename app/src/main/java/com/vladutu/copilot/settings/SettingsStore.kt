@@ -44,6 +44,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_TILE_BORDER_WIDTH] = dp }
     }
 
+    /** Whether the knob-focused tile fills with an amber wash. Defaults on. */
+    val tileFocusFillFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_TILE_FOCUS_FILL] ?: TileAppearanceDefaults.FOCUS_FILL
+    }
+
+    suspend fun setTileFocusFill(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_TILE_FOCUS_FILL] = enabled }
+    }
+
     /** Whether a knob press taps Waze's "Go now". Defaults on. */
     val wazeGoEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_WAZE_GO_ENABLED] ?: true
@@ -90,6 +99,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")
+        val KEY_TILE_FOCUS_FILL = booleanPreferencesKey("tile_focus_fill")
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
     }

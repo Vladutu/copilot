@@ -1,7 +1,9 @@
 package com.vladutu.copilot.ui.settings
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,15 +16,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,15 +43,26 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
+import com.vladutu.copilot.ui.theme.PilotOk
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import kotlin.math.roundToInt
 
+/**
+ * Settings, grouped into cards (see docs/design/img.png): Permissions, General, Tiles,
+ * Waze, Pairing — health checks first, everyday tweaks above the fold, and set-once
+ * pairing (with its destructive regenerate) last. Diagnostics lives as the bug button
+ * in the header, not as a setting.
+ */
 @Composable
 fun SettingsScreen(
     autoStart: Boolean,
@@ -50,6 +71,8 @@ fun SettingsScreen(
     onTileFontSizeChange: (Float) -> Unit,
     tileBorderWidth: Float,
     onTileBorderWidthChange: (Float) -> Unit,
+    tileFocusFill: Boolean,
+    onTileFocusFillChange: (Boolean) -> Unit,
     wazeGoEnabled: Boolean,
     onWazeGoEnabledChange: (Boolean) -> Unit,
     wazeGoLabel: String,
@@ -71,109 +94,118 @@ fun SettingsScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        ScreenHeader(title = stringResource(R.string.settings_title), onBack = onBack)
-
-        // Auto-start toggle row.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_autostart_label),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Switch(checked = autoStart, onCheckedChange = onAutoStartChange)
-        }
-
-        // Tile appearance section.
-        Text(
-            text = stringResource(R.string.settings_tiles_label),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        SliderRow(
-            label = stringResource(R.string.settings_tile_font_size),
-            value = tileFontSize,
-            valueRange = TileAppearanceDefaults.FONT_SIZE_MIN..TileAppearanceDefaults.FONT_SIZE_MAX,
-            onValueChange = onTileFontSizeChange,
-        )
-        SliderRow(
-            label = stringResource(R.string.settings_tile_border_width),
-            value = tileBorderWidth,
-            valueRange = TileAppearanceDefaults.BORDER_WIDTH_MIN..TileAppearanceDefaults.BORDER_WIDTH_MAX,
-            onValueChange = onTileBorderWidthChange,
-        )
-
-        // Waze "Go now" knob-tap section.
-        Text(
-            text = stringResource(R.string.settings_waze_label),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.settings_waze_go_toggle),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Switch(checked = wazeGoEnabled, onCheckedChange = onWazeGoEnabledChange)
-        }
-        var labelDraft by remember(wazeGoLabel) { mutableStateOf(wazeGoLabel) }
-        OutlinedTextField(
-            value = labelDraft,
-            onValueChange = {
-                labelDraft = it
-                onWazeGoLabelChange(it)
+        ScreenHeader(
+            title = stringResource(R.string.settings_title),
+            onBack = onBack,
+            trailing = {
+                IconButton(onClick = onOpenLogs, modifier = Modifier.size(64.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.BugReport,
+                        contentDescription = stringResource(R.string.settings_diagnostic_log),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             },
-            singleLine = true,
-            enabled = wazeGoEnabled,
-            label = { Text(stringResource(R.string.settings_waze_go_button_label)) },
-            modifier = Modifier.fillMaxWidth(),
         )
 
-        // Pairing section.
-        Text(
-            text = stringResource(R.string.settings_pairing_label),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = topic?.let { "${it.take(16)}…" } ?: stringResource(R.string.settings_topic_none),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onCopyTopic, enabled = topic != null) {
-                Text(stringResource(R.string.settings_copy_topic))
-            }
-            OutlinedButton(onClick = { showQr = true }, enabled = topic != null) {
-                Text(stringResource(R.string.settings_show_qr))
-            }
-        }
-        OutlinedButton(onClick = { confirmRegen = true }) {
-            Text(stringResource(R.string.settings_regenerate))
+        SettingsSection(title = stringResource(R.string.settings_permissions_label)) {
+            PermissionRow(
+                label = stringResource(R.string.settings_now_playing_access),
+                granted = rememberPermissionGranted(PermissionHelpers::isNotificationAccessGranted),
+                onEnable = { PermissionHelpers.openNotificationAccessSettings(ctx) },
+            )
+            // Android disables the accessibility service on force-stop/reinstall, so this
+            // row is the first place to look when auto-return silently stops working.
+            PermissionRow(
+                label = stringResource(R.string.settings_auto_return),
+                granted = rememberPermissionGranted(PermissionHelpers::isAccessibilityServiceEnabled),
+                onEnable = { PermissionHelpers.openAccessibilitySettings(ctx) },
+            )
         }
 
-        // Now-playing (notification access) grant — shown only while access is missing.
-        if (!PermissionHelpers.isNotificationAccessGranted(ctx)) {
-            OutlinedButton(onClick = { PermissionHelpers.openNotificationAccessSettings(ctx) }) {
-                Text(stringResource(R.string.grant_now_playing_access))
-            }
+        SettingsSection(title = stringResource(R.string.settings_general_label)) {
+            SwitchRow(
+                label = stringResource(R.string.settings_autostart_label),
+                checked = autoStart,
+                onCheckedChange = onAutoStartChange,
+            )
         }
 
-        // Accessibility (BACK interception / auto-return) grant — shown only while disabled.
-        // Android disables this on force-stop/reinstall, so it must be re-grantable in-app.
-        if (!PermissionHelpers.isAccessibilityServiceEnabled(ctx)) {
-            OutlinedButton(onClick = { PermissionHelpers.openAccessibilitySettings(ctx) }) {
-                Text(stringResource(R.string.grant_accessibility))
-            }
+        SettingsSection(title = stringResource(R.string.settings_tiles_label)) {
+            SliderRow(
+                label = stringResource(R.string.settings_tile_font_size),
+                value = tileFontSize,
+                valueRange = TileAppearanceDefaults.FONT_SIZE_MIN..TileAppearanceDefaults.FONT_SIZE_MAX,
+                onValueChange = onTileFontSizeChange,
+            )
+            SliderRow(
+                label = stringResource(R.string.settings_tile_border_width),
+                value = tileBorderWidth,
+                valueRange = TileAppearanceDefaults.BORDER_WIDTH_MIN..TileAppearanceDefaults.BORDER_WIDTH_MAX,
+                onValueChange = onTileBorderWidthChange,
+            )
+            SwitchRow(
+                label = stringResource(R.string.settings_tile_focus_fill),
+                checked = tileFocusFill,
+                onCheckedChange = onTileFocusFillChange,
+            )
         }
 
-        OutlinedButton(onClick = onOpenLogs) {
-            Text(stringResource(R.string.settings_diagnostic_log))
+        SettingsSection(title = stringResource(R.string.settings_waze_label)) {
+            SwitchRow(
+                label = stringResource(R.string.settings_waze_go_toggle),
+                checked = wazeGoEnabled,
+                onCheckedChange = onWazeGoEnabledChange,
+            )
+            var labelDraft by remember(wazeGoLabel) { mutableStateOf(wazeGoLabel) }
+            OutlinedTextField(
+                value = labelDraft,
+                onValueChange = {
+                    labelDraft = it
+                    onWazeGoLabelChange(it)
+                },
+                singleLine = true,
+                enabled = wazeGoEnabled,
+                label = { Text(stringResource(R.string.settings_waze_go_button_label)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        SettingsSection(title = stringResource(R.string.settings_pairing_label)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_topic_label),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    text = topic?.let { "${it.take(16)}…" } ?: stringResource(R.string.settings_topic_none),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onCopyTopic, enabled = topic != null) {
+                    Text(stringResource(R.string.settings_copy_topic))
+                }
+                OutlinedButton(onClick = { showQr = true }, enabled = topic != null) {
+                    Text(stringResource(R.string.settings_show_qr))
+                }
+                // Destructive — breaks pairing with Pilot and Wingman, hence the red.
+                OutlinedButton(
+                    onClick = { confirmRegen = true },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                ) {
+                    Text(stringResource(R.string.settings_regenerate))
+                }
+            }
         }
     }
 
@@ -219,6 +251,91 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_regenerate_title)) },
             text = { Text(stringResource(R.string.settings_regenerate_message)) },
         )
+    }
+}
+
+/** A settings group: a bordered card with an all-caps muted title above its rows. */
+@Composable
+private fun SettingsSection(title: String, content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            content()
+        }
+    }
+}
+
+/**
+ * Re-checks a permission every time the screen resumes, so granting it in the system
+ * settings and coming back flips the row to "Granted" without reopening the screen.
+ */
+@Composable
+private fun rememberPermissionGranted(check: (Context) -> Boolean): Boolean {
+    val ctx = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var granted by remember { mutableStateOf(check(ctx)) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) granted = check(ctx)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return granted
+}
+
+/** Permission status row: green "✓ Granted" once granted, an Enable button until then. */
+@Composable
+private fun PermissionRow(label: String, granted: Boolean, onEnable: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (granted) {
+            Text(
+                text = stringResource(R.string.settings_permission_granted),
+                style = MaterialTheme.typography.bodyLarge,
+                color = PilotOk,
+            )
+        } else {
+            Button(onClick = onEnable) {
+                Text(stringResource(R.string.settings_permission_enable))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

@@ -65,6 +65,17 @@ class SettingsStoreTest {
         assertEquals(8f, store.tileBorderWidthFlow.first(), 0f)
     }
 
+    @Test fun `tile focus fill defaults to on`() = runTest {
+        assertEquals(true, store.tileFocusFillFlow.first())
+    }
+
+    @Test fun `setTileFocusFill round-trips`() = runTest {
+        store.setTileFocusFill(false)
+        assertEquals(false, store.tileFocusFillFlow.first())
+        store.setTileFocusFill(true)
+        assertEquals(true, store.tileFocusFillFlow.first())
+    }
+
     @Test fun `topicFlow is null before any topic exists`() = runTest {
         assertNull(store.topicFlow.first())
     }

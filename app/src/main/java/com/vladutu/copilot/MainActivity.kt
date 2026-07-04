@@ -128,6 +128,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.FONT_SIZE_SP)
     val tileBorderWidth by app.locator.settingsStore.tileBorderWidthFlow
         .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.BORDER_WIDTH_DP)
+    val tileFocusFill by app.locator.settingsStore.tileFocusFillFlow
+        .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.FOCUS_FILL)
 
     // A successful launch sends Copilot to the back, so a failure leaves this UI
     // in front — surface the reason as a toast instead of swallowing it silently.
@@ -140,7 +142,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     }
 
     CompositionLocalProvider(
-        LocalTileAppearance provides TileAppearance(tileFontSize.sp, tileBorderWidth.dp),
+        LocalTileAppearance provides TileAppearance(tileFontSize.sp, tileBorderWidth.dp, tileFocusFill),
     ) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
@@ -313,6 +315,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 tileBorderWidth = tileBorderWidth,
                 onTileBorderWidthChange = { dp ->
                     app.applicationScope.launch { app.locator.settingsStore.setTileBorderWidth(dp) }
+                },
+                tileFocusFill = tileFocusFill,
+                onTileFocusFillChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setTileFocusFill(enabled) }
                 },
                 wazeGoEnabled = wazeGoEnabled,
                 onWazeGoEnabledChange = { enabled ->

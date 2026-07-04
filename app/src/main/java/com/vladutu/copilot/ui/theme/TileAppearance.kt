@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 data class TileAppearance(
     val fontSize: TextUnit = TileAppearanceDefaults.FONT_SIZE_SP.sp,
     val focusBorderWidth: Dp = TileAppearanceDefaults.BORDER_WIDTH_DP.dp,
+    val focusFill: Boolean = TileAppearanceDefaults.FOCUS_FILL,
 ) {
     /** Label line height, holding the original 32sp → 38sp proportion as the font scales. */
     val lineHeight: TextUnit get() = (fontSize.value * LINE_HEIGHT_RATIO).sp
@@ -29,6 +30,9 @@ data class TileAppearance(
 object TileAppearanceDefaults {
     const val FONT_SIZE_SP = 32f
     const val BORDER_WIDTH_DP = 4f
+
+    /** Whether the knob-focused tile fills with an amber wash (vs. border + glow only). */
+    const val FOCUS_FILL = true
 
     // Slider bounds exposed in Settings.
     const val FONT_SIZE_MIN = 18f
