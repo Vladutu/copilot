@@ -67,34 +67,25 @@ fun NowPlayingStrip(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(10.dp),
             )
-            Column(modifier = Modifier.weight(1f)) {
-                if (nowPlaying != null) {
-                    Text(
-                        text = nowPlaying.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val artist = nowPlaying.artist
-                    if (!artist.isNullOrBlank()) {
-                        Text(
-                            text = artist,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                } else {
-                    Text(
-                        text = stringResource(R.string.now_playing_idle),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
+            // One big line — "Title - Artist" — legible at a glance while driving.
+            val line = if (nowPlaying != null) {
+                val artist = nowPlaying.artist
+                if (!artist.isNullOrBlank()) "${nowPlaying.title} - $artist" else nowPlaying.title
+            } else {
+                stringResource(R.string.now_playing_idle)
             }
+            Text(
+                text = line,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (nowPlaying != null) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             likeControl?.invoke()
         }
     }
