@@ -49,6 +49,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
@@ -98,13 +99,20 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_title),
             onBack = onBack,
             trailing = {
-                IconButton(onClick = onOpenLogs, modifier = Modifier.size(64.dp)) {
-                    Icon(
-                        imageVector = Icons.Filled.BugReport,
-                        contentDescription = stringResource(R.string.settings_diagnostic_log),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp),
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    IconButton(onClick = onOpenLogs, modifier = Modifier.size(64.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.BugReport,
+                            contentDescription = stringResource(R.string.settings_diagnostic_log),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
                 }
             },
         )

@@ -17,6 +17,7 @@ import com.vladutu.copilot.history.from
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.net.NtfySubscriber
 import com.vladutu.copilot.net.ParseResult
+import com.vladutu.copilot.net.StreamEvent
 import com.vladutu.copilot.net.savesToHistory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +46,8 @@ data class UiState(
     val recent: List<RecentEvent> = emptyList(),
     /** Most recent (now - msg.ts) we observed. Positive = box clock ahead of phone. */
     val skewSec: Long? = null,
+    /** When the current connected stretch began; null while not connected. */
+    val connectedSinceSec: Long? = null,
 )
 
 class ListenerService : Service() {
@@ -91,11 +94,29 @@ class ListenerService : Service() {
         val history = app.locator.historyRepository
         val artwork = app.locator.artworkCache
 
-        state.value = state.value.copy(conn = ConnState.Reconnecting)
+        state.value = state.value.copy(conn = ConnState.Reconnecting, connectedSinceSec = null)
 
-        subscriber.subscribe().collect { result ->
-            // Any result coming through means the stream is alive.
-            state.value = state.value.copy(conn = ConnState.Connected)
+        // Connection state comes from the stream lifecycle, not from payloads —
+        // real messages are days apart, so the subscribe handshake is the health
+        // signal (green the moment ntfy accepts us, yellow the moment we drop).
+        subscriber.subscribe().collect { event ->
+            val result = when (event) {
+                StreamEvent.Opened -> {
+                    state.value = state.value.copy(
+                        conn = ConnState.Connected,
+                        connectedSinceSec = System.currentTimeMillis() / 1000L,
+                    )
+                    return@collect
+                }
+                StreamEvent.Dropped -> {
+                    state.value = state.value.copy(
+                        conn = ConnState.Reconnecting,
+                        connectedSinceSec = null,
+                    )
+                    return@collect
+                }
+                is StreamEvent.Payload -> event.result
+            }
 
             when (result) {
                 is ParseResult.Accepted -> {

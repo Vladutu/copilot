@@ -1,6 +1,8 @@
 package com.vladutu.copilot.net
 
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -40,6 +42,11 @@ class NtfySubscriberTest {
         maxAgeSec = maxAge,
     )
 
+    /** The parsed payloads only, without the Opened/Dropped lifecycle events. */
+    private fun payloads() = makeSubscriber().subscribe()
+        .filterIsInstance<StreamEvent.Payload>()
+        .map { it.result }
+
     private fun ytPayload(ts: Long, list: String): String =
         """{"v":3,"ts":$ts,"cmd":"ytmusic","form":"playlist","url":"https://music.youtube.com/watch?list=$list&shuffle=1"}"""
 
@@ -47,7 +54,7 @@ class NtfySubscriberTest {
     fun `emits accepted result for a valid message`() = runTest {
         server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLone"))))
 
-        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        val result = withTimeout(2000) { payloads().first() }
         assertTrue(result is ParseResult.Accepted)
         assertEquals(
             "https://music.youtube.com/watch?list=PLone&shuffle=1",
@@ -60,7 +67,7 @@ class NtfySubscriberTest {
         val staleTs = now - maxAge - 100
         server.enqueue(MockResponse().setBody(envelope(ytPayload(staleTs, "PLstale"))))
 
-        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        val result = withTimeout(2000) { payloads().first() }
         assertTrue(result is ParseResult.Rejected)
         assertTrue((result as ParseResult.Rejected).reason.contains("stale"))
     }
@@ -70,7 +77,7 @@ class NtfySubscriberTest {
         val keepalive = """{"id":"x","time":$now,"event":"keepalive","topic":"t"}"""
         server.enqueue(MockResponse().setBody(keepalive + "\n" + envelope(ytPayload(now, "PLgood"))))
 
-        val result = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        val result = withTimeout(2000) { payloads().first() }
         assertTrue(result is ParseResult.Accepted)
         assertEquals(
             "https://music.youtube.com/watch?list=PLgood&shuffle=1",
@@ -79,12 +86,33 @@ class NtfySubscriberTest {
     }
 
     @Test
+    fun `signals Opened on subscribe and Dropped when the stream ends`() = runTest {
+        server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLone"))))
+
+        val events = withTimeout(2000) { makeSubscriber().subscribe().take(3).toList() }
+        assertTrue(events[0] is StreamEvent.Opened)
+        assertTrue(events[1] is StreamEvent.Payload)
+        assertTrue(events[2] is StreamEvent.Dropped)
+    }
+
+    @Test
+    fun `signals Opened without any message - connect alone means healthy`() = runTest {
+        // Keepalive only, no real message: the stream must still report Opened,
+        // because days can pass between real messages.
+        val keepalive = """{"id":"x","time":$now,"event":"keepalive","topic":"t"}"""
+        server.enqueue(MockResponse().setBody(keepalive + "\n"))
+
+        val event = withTimeout(2000) { makeSubscriber().subscribe().first() }
+        assertTrue(event is StreamEvent.Opened)
+    }
+
+    @Test
     fun `reconnects after the server closes the stream`() = runTest {
         server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLfirst"))))
         server.enqueue(MockResponse().setBody(envelope(ytPayload(now, "PLsecond"))))
 
         val urls = withTimeout(5000) {
-            makeSubscriber().subscribe()
+            payloads()
                 .take(2)
                 .toList()
                 .map { (it as ParseResult.Accepted).message.url }

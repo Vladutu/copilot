@@ -284,11 +284,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
 
         composable("status") {
             val uiState by ListenerService.state.collectAsStateWithLifecycle()
-            val topic by app.locator.settingsStore.topicFlow
-                .collectAsStateWithLifecycle(initialValue = null)
             StatusScreen(
                 state = uiState,
-                topic = topic,
                 onBack = { nav.popBackStack() },
             )
         }
