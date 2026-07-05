@@ -1,6 +1,5 @@
 package com.vladutu.copilot.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,8 +57,10 @@ fun NowPlayingStrip(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Album-art slot: the music model carries no artwork, so a music-note glyph
-            // stands in (per product decision 2026-07-03).
-            Image(
+            // stands in (per product decision 2026-07-03). Tinted explicitly — the
+            // vector's own colorControlNormal tint blends into surfaceVariant under
+            // sun glare. Amber while playing, muted when idle, matching the text.
+            Icon(
                 painter = painterResource(R.drawable.ic_music_note),
                 contentDescription = null,
                 modifier = Modifier
@@ -66,6 +68,11 @@ fun NowPlayingStrip(
                     .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(10.dp),
+                tint = if (nowPlaying != null) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
             // One big line — "Title - Artist" — legible at a glance while driving.
             val line = if (nowPlaying != null) {
