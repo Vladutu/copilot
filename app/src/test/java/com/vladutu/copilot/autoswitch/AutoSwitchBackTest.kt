@@ -32,7 +32,7 @@ class AutoSwitchBackTest {
         AutoSwitchBack.onForeground("com.waze")
         AutoSwitchBack.arm()
         assertTrue(AutoSwitchBack.isArmed())
-        assertTrue(AutoSwitchBack.shouldScheduleOnYtMusicShown())
+        assertTrue(AutoSwitchBack.shouldScheduleOnMusicAppShown())
         assertEquals("com.waze", AutoSwitchBack.resolveTargetAtFire())
     }
 
@@ -40,8 +40,30 @@ class AutoSwitchBackTest {
         AutoSwitchBack.onForeground(ytMusic)
         AutoSwitchBack.arm()
         assertTrue(AutoSwitchBack.isArmed())
-        assertFalse(AutoSwitchBack.shouldScheduleOnYtMusicShown())
+        assertFalse(AutoSwitchBack.shouldScheduleOnMusicAppShown())
         assertNull(AutoSwitchBack.resolveTargetAtFire())
+    }
+
+    @Test fun `arm with soundcloud in foreground yields no target`() {
+        AutoSwitchBack.onForeground(AutoSwitchBack.SOUNDCLOUD_PKG)
+        AutoSwitchBack.arm()
+        assertTrue(AutoSwitchBack.isArmed())
+        assertFalse(AutoSwitchBack.shouldScheduleOnMusicAppShown())
+        assertNull(AutoSwitchBack.resolveTargetAtFire())
+    }
+
+    @Test fun `soundcloud coming up does not count as user moving away`() {
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        AutoSwitchBack.arm()
+        AutoSwitchBack.onForeground(AutoSwitchBack.SOUNDCLOUD_PKG) // SoundCloud came up
+        assertEquals("com.vladutu.copilot", AutoSwitchBack.resolveTargetAtFire())
+    }
+
+    @Test fun `waze target survives soundcloud launch`() {
+        AutoSwitchBack.onForeground("com.waze")
+        AutoSwitchBack.arm()
+        AutoSwitchBack.onForeground(AutoSwitchBack.SOUNDCLOUD_PKG)
+        assertEquals("com.waze", AutoSwitchBack.resolveTargetAtFire())
     }
 
     @Test fun `in-app case returns to copilot`() {
@@ -72,7 +94,7 @@ class AutoSwitchBackTest {
         AutoSwitchBack.arm()
         now += 8_001L
         assertFalse(AutoSwitchBack.isArmed())
-        assertFalse(AutoSwitchBack.shouldScheduleOnYtMusicShown())
+        assertFalse(AutoSwitchBack.shouldScheduleOnMusicAppShown())
         assertNull(AutoSwitchBack.resolveTargetAtFire())
     }
 

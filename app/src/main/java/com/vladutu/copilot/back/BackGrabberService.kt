@@ -46,7 +46,7 @@ class BackGrabberService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    /** Guards against scheduling multiple settle-timers from repeated YT Music window events. */
+    /** Guards against scheduling multiple settle-timers from repeated music-app window events. */
     private var switchBackPending = false
 
     /** Live mirror of the Waze Go-now settings, kept current by collectors started in
@@ -98,12 +98,12 @@ class BackGrabberService : AccessibilityService() {
         if (!isRestorable(pkg)) return
         AutoSwitchBack.onForeground(pkg)
 
-        if (pkg == AutoSwitchBack.YT_MUSIC_PKG &&
-            AutoSwitchBack.shouldScheduleOnYtMusicShown() &&
+        if (pkg in AutoSwitchBack.MUSIC_PKGS &&
+            AutoSwitchBack.shouldScheduleOnMusicAppShown() &&
             !switchBackPending
         ) {
             switchBackPending = true
-            DiagnosticLog.i(TAG, "YT Music shown while armed — switch-back in ${AutoSwitchBack.SETTLE_MS}ms")
+            DiagnosticLog.i(TAG, "$pkg shown while armed — switch-back in ${AutoSwitchBack.SETTLE_MS}ms")
             handler.postDelayed({ fireSwitchBack() }, AutoSwitchBack.SETTLE_MS)
         }
     }
@@ -113,10 +113,10 @@ class BackGrabberService : AccessibilityService() {
     private val restorableCache = HashMap<String, Boolean>()
 
     /** A package is restorable if we can bring it back to the foreground: Copilot itself,
-     *  YouTube Music, or any app with a launcher activity. Everything else (overlays, system
+     *  the music apps, or any app with a launcher activity. Everything else (overlays, system
      *  UI, IMEs) is ignored so it can't become the restore target or look like the user moved. */
     private fun isRestorable(pkg: String): Boolean {
-        if (pkg == applicationContext.packageName || pkg == AutoSwitchBack.YT_MUSIC_PKG) return true
+        if (pkg == applicationContext.packageName || pkg in AutoSwitchBack.MUSIC_PKGS) return true
         restorableCache[pkg]?.let { return it }
         val restorable = applicationContext.packageManager.getLaunchIntentForPackage(pkg) != null
         restorableCache[pkg] = restorable
@@ -146,7 +146,7 @@ class BackGrabberService : AccessibilityService() {
             applicationContext.packageManager.getLaunchIntentForPackage(pkg)
         }
         if (intent == null) {
-            DiagnosticLog.w(TAG, "no launch intent for $pkg — staying in YT Music")
+            DiagnosticLog.w(TAG, "no launch intent for $pkg — staying in the music app")
             return
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -292,7 +292,7 @@ class BackGrabberService : AccessibilityService() {
             .addStroke(GestureDescription.StrokeDescription(path, 0L, TAP_DURATION_MS))
             .build()
         val dispatched = dispatchGesture(gesture, null, null)
-        if (!dispatched) DiagnosticLog.w(TAG, "waze-go: dispatchGesture returned false")
+        if (!dispatched) DiagnosticLog.w(TAG, "dispatchGesture returned false")
     }
 
     /** Compact dump of labeled nodes, so the first car test reveals how Waze exposes "Go now"

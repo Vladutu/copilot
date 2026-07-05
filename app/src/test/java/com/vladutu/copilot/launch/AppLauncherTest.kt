@@ -6,6 +6,7 @@ import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
+import com.vladutu.copilot.soundcloud.SoundCloudPauser
 import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,10 +23,20 @@ class AppLauncherTest {
 
     private lateinit var context: Context
     private lateinit var launcher: AppLauncher
+    private lateinit var pauser: FakePauser
+
+    private class FakePauser(context: Context) : SoundCloudPauser(context) {
+        var pauseCalls = 0
+        override fun pauseIfPlaying(): Boolean {
+            pauseCalls++
+            return false
+        }
+    }
 
     @Before fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        launcher = AppLauncher(context)
+        pauser = FakePauser(context)
+        launcher = AppLauncher(context, soundCloudPauser = pauser)
     }
 
     private fun msg(cmd: String, form: Form, url: String) =
@@ -135,6 +146,16 @@ class AppLauncherTest {
         AutoSwitchBack.onForeground("com.vladutu.copilot")
         launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=X"))
         assertTrue(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `soundcloud launch pauses live playback first`() {
+        launcher.launch(msg("soundcloud", Form.SONG, "https://soundcloud.com/a/b"))
+        assertEquals(1, pauser.pauseCalls)
+    }
+
+    @Test fun `ytmusic launch does not touch the soundcloud session`() {
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertEquals(0, pauser.pauseCalls)
     }
 
     @Test fun `arms autoswitch for soundcloud launch`() {

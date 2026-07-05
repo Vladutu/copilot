@@ -9,8 +9,12 @@ import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
+import com.vladutu.copilot.soundcloud.SoundCloudPauser
 
-class AppLauncher(private val context: Context) {
+class AppLauncher(
+    private val context: Context,
+    private val soundCloudPauser: SoundCloudPauser = SoundCloudPauser(context),
+) {
 
     sealed class Result {
         object Ok : Result()
@@ -69,6 +73,11 @@ class AppLauncher(private val context: Context) {
             "maps" -> "Google Maps not installed"
             else -> "target app not installed"
         }
+
+        // SoundCloud won't switch to a deep-linked track while another one is actively playing
+        // (it shows the page, keeps the old audio). Pausing first makes the deep link take over
+        // — the same thing that works manually. No-op when nothing is playing.
+        if (cmd == "soundcloud") soundCloudPauser.pauseIfPlaying()
 
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
             if (targetPkg != null) setPackage(targetPkg)
