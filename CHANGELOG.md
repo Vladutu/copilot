@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.20.1] - 2026-07-05
+
+### Fixed
+- Auto-return after launch + pause live playback so deep links switch tracks
+
 ## [0.20.0] - 2026-07-05
 
 ### Added
@@ -255,6 +260,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.20.1]: https://github.com/Vladutu/copilot/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/Vladutu/copilot/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/Vladutu/copilot/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Vladutu/copilot/compare/v0.17.4...v0.18.0
