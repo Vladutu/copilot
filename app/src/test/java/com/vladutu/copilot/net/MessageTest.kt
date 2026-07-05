@@ -191,4 +191,39 @@ class MessageTest {
         val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
         assertTrue(res is ParseResult.Rejected)
     }
+
+    // --- SoundCloud ---
+
+    @Test fun `accepts soundcloud song`() {
+        val body = """{"v":3,"ts":$now,"cmd":"soundcloud","form":"song","url":"https://soundcloud.com/the-real-tibo/la-pola-gola-life","title":"T","imageUrl":"https://i1.sndcdn.com/x.jpg"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+        val msg = (res as ParseResult.Accepted).message
+        assertEquals("soundcloud", msg.cmd)
+        assertEquals(Form.SONG, msg.form)
+    }
+
+    @Test fun `accepts soundcloud playlist on sets url`() {
+        val body = """{"v":3,"ts":$now,"cmd":"soundcloud","form":"playlist","url":"https://soundcloud.com/a/sets/b"}"""
+        assertTrue(Message.parseEnvelope(envelope(body), now, maxAge) is ParseResult.Accepted)
+    }
+
+    @Test fun `accepts soundcloud short link fallback`() {
+        val body = """{"v":3,"ts":$now,"cmd":"soundcloud","form":"song","url":"https://on.soundcloud.com/LgcLHMoSYl1nuCDDai"}"""
+        assertTrue(Message.parseEnvelope(envelope(body), now, maxAge) is ParseResult.Accepted)
+    }
+
+    @Test fun `rejects soundcloud with untrusted host`() {
+        val body = """{"v":3,"ts":$now,"cmd":"soundcloud","form":"song","url":"https://evil.com/a/b"}"""
+        val res = Message.parseEnvelope(envelope(body), now, maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("untrusted host", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects soundcloud with destination form`() {
+        val body = """{"v":3,"ts":$now,"cmd":"soundcloud","form":"destination","url":"https://soundcloud.com/a/b"}"""
+        val res = Message.parseEnvelope(envelope(body), now, maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
 }

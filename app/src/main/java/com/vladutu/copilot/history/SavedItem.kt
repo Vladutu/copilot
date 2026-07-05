@@ -12,6 +12,8 @@ data class SavedItem(
     val title: String?,
     val imageUrl: String?,
     val url: String,
+    /** Producing cmd ("ytmusic", "soundcloud", "waze", "radio"). Null = legacy row; replay derives from form. */
+    val cmd: String? = null,
     val savedAt: Long,
 ) {
     companion object
@@ -31,6 +33,7 @@ fun SavedItem.Companion.from(message: Message, savedAt: Long): SavedItem {
         title = message.title,
         imageUrl = message.imageUrl,
         url = message.url,
+        cmd = message.cmd,
         savedAt = savedAt,
     )
 }

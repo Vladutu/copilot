@@ -58,7 +58,7 @@ class AppLauncherTest {
     }
 
     @Test fun `replay from SavedItem works`() {
-        val item = SavedItem(Form.SONG, "abc", null, null, "https://music.youtube.com/watch?v=abc", 0)
+        val item = SavedItem(Form.SONG, "abc", null, null, "https://music.youtube.com/watch?v=abc", savedAt = 0)
         val res = launcher.replay(item)
         assertTrue(res is AppLauncher.Result.Ok)
     }
@@ -95,17 +95,52 @@ class AppLauncherTest {
     }
 
     @Test fun `replays RADIO SavedItem via VLC`() {
-        val item = SavedItem(Form.RADIO, "abc", "Europa FM", null, "https://live.example.ro/europafm.mp3", 0)
+        val item = SavedItem(Form.RADIO, "abc", "Europa FM", null, "https://live.example.ro/europafm.mp3", savedAt = 0)
         val res = launcher.replay(item)
         assertTrue(res is AppLauncher.Result.Ok)
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.VLC_PKG, intent.`package`)
     }
 
+    @Test fun `launches soundcloud message with pinned package`() {
+        val res = launcher.launch(msg("soundcloud", Form.SONG, "https://soundcloud.com/the-real-tibo/la-pola-gola-life"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.SOUNDCLOUD_PKG, intent.`package`)
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals("https://soundcloud.com/the-real-tibo/la-pola-gola-life", intent.data.toString())
+    }
+
+    @Test fun `replays soundcloud SavedItem via stored cmd not form`() {
+        // form=SONG would map to ytmusic for legacy rows; the stored cmd must win.
+        val item = SavedItem(
+            form = Form.SONG, id = "sha", title = "T", imageUrl = null,
+            url = "https://soundcloud.com/a/b", cmd = "soundcloud", savedAt = 0,
+        )
+        val res = launcher.replay(item)
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.SOUNDCLOUD_PKG, intent.`package`)
+    }
+
+    @Test fun `legacy SavedItem without cmd still replays via form`() {
+        val item = SavedItem(Form.SONG, "abc", null, null, "https://music.youtube.com/watch?v=abc", savedAt = 0)
+        launcher.replay(item)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
+    }
+
     @Test fun `arms autoswitch for ytmusic launch`() {
         AutoSwitchBack.disarm()
         AutoSwitchBack.onForeground("com.vladutu.copilot")
         launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=X"))
+        assertTrue(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `arms autoswitch for soundcloud launch`() {
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("soundcloud", Form.SONG, "https://soundcloud.com/a/b"))
         assertTrue(AutoSwitchBack.isArmed())
     }
 

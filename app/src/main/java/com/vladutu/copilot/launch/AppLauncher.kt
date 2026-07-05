@@ -22,10 +22,10 @@ class AppLauncher(private val context: Context) {
         if (msg.cmd == "radio") launchRadio(msg.url, msg.title)
         else launchUrl(msg.cmd, msg.url)
 
-    /** Entry point for UI-driven re-plays from a saved tile. */
+    /** Entry point for UI-driven re-plays from a saved tile. Legacy rows have no cmd; derive it from form. */
     fun replay(item: SavedItem): Result =
         if (item.form == Form.RADIO) launchRadio(item.url, item.title)
-        else launchUrl(cmdForForm(item.form), item.url)
+        else launchUrl(item.cmd ?: cmdForForm(item.form), item.url)
 
     /** Entry point for Discover-driven launches (found playlist or radio mix). */
     fun launchYtMusic(url: String): Result = launchUrl("ytmusic", url)
@@ -57,12 +57,14 @@ class AppLauncher(private val context: Context) {
         // route the URL; for ytmusic/waze we pin the package to prevent a browser fallback.
         val targetPkg: String? = when (cmd) {
             "ytmusic" -> YT_MUSIC_PKG
+            "soundcloud" -> SOUNDCLOUD_PKG
             "waze" -> WAZE_PKG
             "maps" -> null
             else -> return Result.Failed("unknown command: $cmd")
         }
         val missingMsg = when (cmd) {
             "ytmusic" -> "YouTube Music not installed"
+            "soundcloud" -> "SoundCloud not installed"
             "waze" -> "Waze not installed"
             "maps" -> "Google Maps not installed"
             else -> "target app not installed"
@@ -73,11 +75,11 @@ class AppLauncher(private val context: Context) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        // Song/playlist launches go to YT Music's foreground; arm the auto-return so the
-        // accessibility service brings us back once YT Music has loaded. cmd=="ytmusic"
-        // implies form is SONG or PLAYLIST (enforced by Message validation). Radio (VLC,
-        // background) and maps/waze (nav stays foreground) are deliberately not armed.
-        if (cmd == "ytmusic") AutoSwitchBack.arm()
+        // Song/playlist launches go to the music app's foreground (YT Music or SoundCloud);
+        // arm the auto-return so the accessibility service brings us back once it has loaded.
+        // These cmds imply form is SONG or PLAYLIST (enforced by Message validation). Radio
+        // (VLC, background) and maps/waze (nav stays foreground) are deliberately not armed.
+        if (cmd == "ytmusic" || cmd == "soundcloud") AutoSwitchBack.arm()
 
         return try {
             context.startActivity(intent)
@@ -131,6 +133,7 @@ class AppLauncher(private val context: Context) {
     companion object {
         const val TAG = "AppLauncher"
         const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
+        const val SOUNDCLOUD_PKG = "com.soundcloud.android"
         const val WAZE_PKG = "com.waze"
         const val MAPS_PKG = "com.google.android.apps.maps"
         const val VLC_PKG = "org.videolan.vlc"

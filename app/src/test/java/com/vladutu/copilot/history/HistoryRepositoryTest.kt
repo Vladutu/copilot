@@ -36,7 +36,7 @@ class HistoryRepositoryTest {
     }
 
     private fun item(form: Form, id: String, savedAt: Long, title: String? = id) =
-        SavedItem(form, id, title, null, "url-$id", savedAt)
+        SavedItem(form, id, title, null, "url-$id", savedAt = savedAt)
 
     @Test fun `save then read returns the item`() = runTest {
         repo.save(item(Form.PLAYLIST, "a", 100L))

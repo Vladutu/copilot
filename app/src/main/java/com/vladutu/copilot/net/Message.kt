@@ -17,7 +17,7 @@ data class Message(
     companion object {
         private const val SCHEMA_VERSION = 3
 
-        private val KNOWN_CMDS = setOf("ytmusic", "waze", "maps", "radio")
+        private val KNOWN_CMDS = setOf("ytmusic", "waze", "maps", "radio", "soundcloud")
 
         private val YT_MUSIC_ALLOWED_PREFIXES = listOf(
             "https://music.youtube.com/",
@@ -33,6 +33,13 @@ data class Message(
             "https://maps.google.com/",
             "https://maps.app.goo.gl/",
             "https://goo.gl/maps/",
+        )
+        private val SOUNDCLOUD_ALLOWED_PREFIXES = listOf(
+            "https://soundcloud.com/",
+            "https://www.soundcloud.com/",
+            // Publisher fallback when short-link resolution fails:
+            "https://on.soundcloud.com/",
+            "https://snd.sc/",
         )
 
         fun parseEnvelope(line: String, nowSec: Long, maxAgeSec: Long): ParseResult {
@@ -73,7 +80,7 @@ data class Message(
                 ?: return ParseResult.Rejected("unknown form", skew)
 
             val cmdFormConsistent = when (cmd) {
-                "ytmusic" -> form == Form.PLAYLIST || form == Form.SONG
+                "ytmusic", "soundcloud" -> form == Form.PLAYLIST || form == Form.SONG
                 "waze", "maps" -> form == Form.DESTINATION
                 "radio" -> form == Form.RADIO
                 else -> false
@@ -95,6 +102,7 @@ data class Message(
                     "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
                     "waze" -> WAZE_ALLOWED_PREFIXES
                     "maps" -> MAPS_ALLOWED_PREFIXES
+                    "soundcloud" -> SOUNDCLOUD_ALLOWED_PREFIXES
                     else -> emptyList()
                 }
                 if (allowedPrefixes.none { url.startsWith(it) }) {
