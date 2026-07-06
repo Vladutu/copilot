@@ -24,6 +24,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
+import com.vladutu.copilot.ui.lists.DotStrip
 import com.vladutu.copilot.ui.lists.PageIndicator
 
 /**
@@ -46,6 +47,12 @@ import com.vladutu.copilot.ui.lists.PageIndicator
  * [onRangeChange] reports the visible 1-based item range (e.g. "1–5 / 24") whenever the
  * page or the list changes, so the caller's header can show a position count without
  * KnobPagedGrid owning the header.
+ *
+ * Bottom dot strip: a list that fits on a single page gets one dot per item with the
+ * pill tracking the focused item (same feel as Home); anything longer gets one dot
+ * per page, the pill moving on page flips. [perItemDots] forces the per-item strip
+ * even across pages — for fixed menus (Music) that stay small enough to dot each entry,
+ * as opposed to unbounded saved lists.
  */
 @Composable
 fun <T> KnobPagedGrid(
@@ -54,6 +61,7 @@ fun <T> KnobPagedGrid(
     modifier: Modifier = Modifier,
     stopsPerItem: Int = 1,
     pageSize: Int = 5,
+    perItemDots: Boolean = false,
     onRangeChange: ((String) -> Unit)? = null,
     tile: @Composable (item: T, focusRequesters: List<FocusRequester>?) -> Unit,
 ) {
@@ -148,7 +156,16 @@ fun <T> KnobPagedGrid(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            PageIndicator(pageCount = nav.pageCount, currentPage = pos.page)
+            if (items.size >= 2 && (perItemDots || items.size <= pageSize)) {
+                // Focus moving between two stops of the same item (Discover's name + play
+                // zones) keeps the pill on that item's dot.
+                DotStrip(
+                    count = items.size,
+                    current = nav.itemIndexOf(pos.page, pos.stop).coerceAtMost(items.size - 1),
+                )
+            } else {
+                PageIndicator(pageCount = nav.pageCount, currentPage = pos.page)
+            }
         }
     }
 }

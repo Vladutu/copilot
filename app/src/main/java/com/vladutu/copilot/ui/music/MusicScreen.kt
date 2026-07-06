@@ -76,6 +76,9 @@ fun MusicScreen(
             items = tiles,
             resetKey = "music",
             pageSize = MUSIC_PAGE_SIZE,
+            // Fixed 6-entry menu: dot every entry so the pill tracks the knob like Home,
+            // instead of the per-page dots unbounded lists get.
+            perItemDots = true,
             modifier = Modifier.weight(1f),
         ) { tile, requesters ->
             MediaRowTile(
