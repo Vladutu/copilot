@@ -6,6 +6,7 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,10 +18,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,18 +58,22 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
+import com.vladutu.copilot.ui.theme.AllThemes
 import com.vladutu.copilot.ui.theme.PilotOk
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
+import com.vladutu.copilot.ui.theme.themeById
 import kotlin.math.roundToInt
 
 /**
- * Settings, grouped into cards (see docs/design/img.png): Permissions, General, Tiles,
- * Waze, Pairing — health checks first, everyday tweaks above the fold, and set-once
+ * Settings, grouped into cards (see docs/design/img.png): Permissions, Display, General,
+ * Tiles, Waze, Pairing — health checks first, everyday tweaks above the fold, and set-once
  * pairing (with its destructive regenerate) last. Diagnostics lives as the bug button
  * in the header, not as a setting.
  */
 @Composable
 fun SettingsScreen(
+    themeId: String,
+    onThemeChange: (String) -> Unit,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
     tileFontSize: Float,
@@ -129,6 +137,15 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_auto_return),
                 granted = rememberPermissionGranted(PermissionHelpers::isAccessibilityServiceEnabled),
                 onEnable = { PermissionHelpers.openAccessibilitySettings(ctx) },
+            )
+        }
+
+        SettingsSection(title = stringResource(R.string.settings_display_label)) {
+            DropdownRow(
+                label = stringResource(R.string.settings_theme_label),
+                selectedLabel = themeById(themeId).label,
+                options = AllThemes.map { it.id to it.label },
+                onSelect = onThemeChange,
             )
         }
 
@@ -326,6 +343,51 @@ private fun PermissionRow(label: String, granted: Boolean, onEnable: () -> Unit)
         } else {
             Button(onClick = onEnable) {
                 Text(stringResource(R.string.settings_permission_enable))
+            }
+        }
+    }
+}
+
+/**
+ * A label + current-value button that opens a dropdown of options. First dropdown in
+ * the app — sized like the other rows so knob focus travels through it naturally.
+ */
+@Composable
+private fun DropdownRow(
+    label: String,
+    selectedLabel: String,
+    options: List<Pair<String, String>>, // id to display label
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Box {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text(selectedLabel)
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (id, optionLabel) ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel, style = MaterialTheme.typography.bodyLarge) },
+                        onClick = {
+                            expanded = false
+                            onSelect(id)
+                        },
+                    )
+                }
             }
         }
     }

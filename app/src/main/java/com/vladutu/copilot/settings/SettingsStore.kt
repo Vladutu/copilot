@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.vladutu.copilot.ui.theme.DefaultTheme
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import com.vladutu.copilot.waze.WazeGoDefaults
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAutoStart(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[KEY_AUTO_START] = enabled }
+    }
+
+    /** Visual theme id (see ui/theme/Themes.kt); unknown ids resolve to Default at read time. */
+    val themeFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_THEME] ?: DefaultTheme.id
+    }
+
+    suspend fun setTheme(id: String) {
+        dataStore.edit { prefs -> prefs[KEY_THEME] = id }
     }
 
     /** Tile label text size in sp; defaults to the value tiles shipped with. */
@@ -96,6 +106,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
 
     private companion object {
         val KEY_AUTO_START = booleanPreferencesKey("auto_start_on_boot")
+        val KEY_THEME = stringPreferencesKey("theme")
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")

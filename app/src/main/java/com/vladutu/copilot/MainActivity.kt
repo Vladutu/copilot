@@ -46,7 +46,9 @@ import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.settings.SettingsScreen
 import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
+import com.vladutu.copilot.ui.theme.DefaultTheme
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import com.vladutu.copilot.ui.theme.themeById
 import com.vladutu.copilot.ui.theme.TileAppearance
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import kotlinx.coroutines.launch
@@ -57,7 +59,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         startListenerService()
         setContent {
-            CopilotDriveTheme {
+            // Collected above the theme wrapper so a Settings change restyles the whole
+            // tree (status bars included) in place — no activity recreate.
+            val themeId by (application as CopilotApp).locator.settingsStore.themeFlow
+                .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
+            CopilotDriveTheme(theme = themeById(themeId)) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     PermissionGate {
                         CopilotNav(::leaveToOtherApp)
@@ -291,6 +297,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         }
 
         composable("settings") {
+            val themeId by app.locator.settingsStore.themeFlow
+                .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
@@ -301,6 +309,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = null)
             val copiedMsg = stringResource(R.string.settings_topic_copied)
             SettingsScreen(
+                themeId = themeId,
+                onThemeChange = { id ->
+                    app.applicationScope.launch { app.locator.settingsStore.setTheme(id) }
+                },
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setAutoStart(enabled) }

@@ -112,6 +112,17 @@ class SettingsStoreTest {
         assertEquals(true, store.wazeGoEnabledFlow.first())
     }
 
+    @Test fun `theme defaults to the default theme id`() = runTest {
+        assertEquals("default", store.themeFlow.first())
+    }
+
+    @Test fun `setTheme round-trips`() = runTest {
+        store.setTheme("bmw")
+        assertEquals("bmw", store.themeFlow.first())
+        store.setTheme("default")
+        assertEquals("default", store.themeFlow.first())
+    }
+
     @Test fun `waze-go label defaults to Go now`() = runTest {
         assertEquals("Go now", store.wazeGoLabelFlow.first())
     }

@@ -55,9 +55,11 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.MTricolor
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.lists.DotStrip
+import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -195,7 +197,15 @@ private fun TopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ConnectionStatus(state = state, onClick = onOpenStatus)
+        // Inner Row keeps the outer SpaceBetween at exactly two children, so on themes
+        // without stripes (Default) the bar lays out identically to before.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LocalThemeSpec.current.accents.stripes?.let { MTricolor(it) }
+            ConnectionStatus(state = state, onClick = onOpenStatus)
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
+import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 
 // Real cover art fills a big square; everything else (app icon, Material/drawable glyph)
@@ -184,6 +185,18 @@ fun MediaRowTile(
                     )
                 }
             }
+        }
+        // BMW-style corner stripes mark the knob-focused tile (docs/img.png, Waze tile);
+        // themes without accents draw nothing.
+        val stripes = LocalThemeSpec.current.accents.stripes
+        if (isFocused && stripes != null) {
+            MTricolor(
+                stripes = stripes,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 12.dp)
+                    .size(32.dp, 12.dp),
+            )
         }
         if (trailing != null) {
             Box(
