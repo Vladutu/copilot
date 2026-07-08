@@ -246,7 +246,7 @@ private fun UiState.subtitle(nowSec: Long): String? = when (conn) {
         if (h > 0) "listening for ${h}h ${m}m" else "listening for ${m}m"
     }
     is ConnState.Reconnecting -> null
-    is ConnState.Error -> (conn as ConnState.Error).message
+    is ConnState.Error -> conn.message
 }
 
 @Composable
