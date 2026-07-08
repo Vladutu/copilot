@@ -19,6 +19,11 @@ data class ThemeAccents(
      * Separate from [stripes] so a theme can carry the badge without the wash.
      */
     val sweep: List<Color>? = null,
+    /**
+     * Top-center radial glow tint behind everything, drawn by
+     * [BackgroundGlow][com.vladutu.copilot.ui.BackgroundGlow]; null = flat background.
+     */
+    val glow: Color? = null,
 )
 
 /**
@@ -85,6 +90,7 @@ val BmwTheme = ThemeSpec(
     accents = ThemeAccents(
         stripes = listOf(BmwStripeLightBlue, BmwStripeDarkBlue, BmwStripeRed),
         sweep = listOf(BmwStripeLightBlue, BmwStripeDarkBlue, BmwStripeRed),
+        glow = BmwGlow,
     ),
 )
 

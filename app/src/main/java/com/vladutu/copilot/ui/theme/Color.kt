@@ -32,6 +32,11 @@ val BmwOnPrimary = Color(0xFF050A14)
 val BmwOnSurface = Color(0xFFEAF1F8)
 val BmwOnSurfaceVariant = Color(0xFF8FA3BC)
 
+// Background glow center tint — a lifted navy between surfaceVariant and outline,
+// drawn top-center fading to transparent over BmwBackground. This color IS the
+// glow intensity knob: lighten to strengthen, darken toward #050A14 to kill it.
+val BmwGlow = Color(0xFF16294A)
+
 // M tricolor stripes (logo/accent use only, not part of the color scheme)
 val BmwStripeLightBlue = Color(0xFF00A0E0)
 val BmwStripeDarkBlue = Color(0xFF1A3E8C)
