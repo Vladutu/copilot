@@ -66,12 +66,16 @@ class MainActivity : ComponentActivity() {
             // tree (status bars included) in place — no activity recreate.
             val themeId by (application as CopilotApp).locator.settingsStore.themeFlow
                 .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
+            val themeSweep by (application as CopilotApp).locator.settingsStore.themeSweepFlow
+                .collectAsStateWithLifecycle(initialValue = true)
             CopilotDriveTheme(theme = themeById(themeId)) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         // Screens draw no full-size backgrounds of their own, so a wash
                         // layered here shows through every route in the gaps between tiles.
-                        LocalThemeSpec.current.accents.sweep?.let { TricolorSweep(it) }
+                        if (themeSweep) {
+                            LocalThemeSpec.current.accents.sweep?.let { TricolorSweep(it) }
+                        }
                         PermissionGate {
                             CopilotNav(::leaveToOtherApp)
                         }
@@ -307,6 +311,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("settings") {
             val themeId by app.locator.settingsStore.themeFlow
                 .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
+            val themeSweep by app.locator.settingsStore.themeSweepFlow
+                .collectAsStateWithLifecycle(initialValue = true)
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
@@ -320,6 +326,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 themeId = themeId,
                 onThemeChange = { id ->
                     app.applicationScope.launch { app.locator.settingsStore.setTheme(id) }
+                },
+                themeSweep = themeSweep,
+                onThemeSweepChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setThemeSweep(enabled) }
                 },
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->

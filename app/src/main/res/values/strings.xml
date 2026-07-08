@@ -50,6 +50,7 @@
     <string name="settings_permission_enable">Enable</string>
     <string name="settings_display_label">Display</string>
     <string name="settings_theme_label">Theme</string>
+    <string name="settings_theme_sweep">Tricolor background</string>
     <string name="settings_general_label">General</string>
     <string name="liked_listener_label">Copilot now-playing</string>
     <string name="settings_title">Settings</string>

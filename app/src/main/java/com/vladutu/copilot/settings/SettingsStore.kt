@@ -36,6 +36,18 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_THEME] = id }
     }
 
+    /**
+     * Whether the theme's background sweep (ThemeAccents.sweep) is drawn. Defaults on.
+     * Theme-agnostic on purpose: one toggle for whichever theme carries a sweep.
+     */
+    val themeSweepFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_THEME_SWEEP] ?: true
+    }
+
+    suspend fun setThemeSweep(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_THEME_SWEEP] = enabled }
+    }
+
     /** Tile label text size in sp; defaults to the value tiles shipped with. */
     val tileFontSizeFlow: Flow<Float> = dataStore.data.map { prefs ->
         prefs[KEY_TILE_FONT_SIZE] ?: TileAppearanceDefaults.FONT_SIZE_SP
@@ -107,6 +119,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
     private companion object {
         val KEY_AUTO_START = booleanPreferencesKey("auto_start_on_boot")
         val KEY_THEME = stringPreferencesKey("theme")
+        val KEY_THEME_SWEEP = booleanPreferencesKey("theme_sweep")
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")

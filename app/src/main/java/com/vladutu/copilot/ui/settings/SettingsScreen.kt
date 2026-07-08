@@ -74,6 +74,8 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     themeId: String,
     onThemeChange: (String) -> Unit,
+    themeSweep: Boolean,
+    onThemeSweepChange: (Boolean) -> Unit,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
     tileFontSize: Float,
@@ -147,6 +149,15 @@ fun SettingsScreen(
                 options = AllThemes.map { it.id to it.label },
                 onSelect = onThemeChange,
             )
+            // Only themes that carry a background sweep (currently BMW) get the toggle;
+            // for the rest the row would be a no-op, so it disappears entirely.
+            if (themeById(themeId).accents.sweep != null) {
+                SwitchRow(
+                    label = stringResource(R.string.settings_theme_sweep),
+                    checked = themeSweep,
+                    onCheckedChange = onThemeSweepChange,
+                )
+            }
         }
 
         SettingsSection(title = stringResource(R.string.settings_general_label)) {
