@@ -45,6 +45,7 @@ import com.vladutu.copilot.ui.lists.SavedListScreen
 import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.BackgroundGlow
+import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.settings.SettingsScreen
 import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.TricolorSweep
@@ -69,13 +70,19 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
             val themeSweep by (application as CopilotApp).locator.settingsStore.themeSweepFlow
                 .collectAsStateWithLifecycle(initialValue = true)
+            val themeGlow by (application as CopilotApp).locator.settingsStore.themeGlowFlow
+                .collectAsStateWithLifecycle(initialValue = GlowDefaults.INTENSITY_DEFAULT)
             CopilotDriveTheme(theme = themeById(themeId)) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         // Screens draw no full-size backgrounds of their own, so washes
                         // layered here show through every route in the gaps between tiles.
                         // Glow below sweep: the stripes ride on top of the light.
-                        LocalThemeSpec.current.accents.glow?.let { BackgroundGlow(it) }
+                        if (themeGlow > 0f) {
+                            LocalThemeSpec.current.accents.glow?.let {
+                                BackgroundGlow(it, alpha = themeGlow / GlowDefaults.INTENSITY_MAX)
+                            }
+                        }
                         if (themeSweep) {
                             LocalThemeSpec.current.accents.sweep?.let { TricolorSweep(it) }
                         }
@@ -316,6 +323,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
             val themeSweep by app.locator.settingsStore.themeSweepFlow
                 .collectAsStateWithLifecycle(initialValue = true)
+            val themeGlow by app.locator.settingsStore.themeGlowFlow
+                .collectAsStateWithLifecycle(initialValue = GlowDefaults.INTENSITY_DEFAULT)
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
@@ -333,6 +342,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 themeSweep = themeSweep,
                 onThemeSweepChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setThemeSweep(enabled) }
+                },
+                themeGlow = themeGlow,
+                onThemeGlowChange = { percent ->
+                    app.applicationScope.launch { app.locator.settingsStore.setThemeGlow(percent) }
                 },
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->

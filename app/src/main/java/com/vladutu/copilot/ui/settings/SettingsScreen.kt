@@ -57,6 +57,7 @@ import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
 import com.vladutu.copilot.ui.theme.AllThemes
 import com.vladutu.copilot.ui.theme.PilotOk
@@ -76,6 +77,8 @@ fun SettingsScreen(
     onThemeChange: (String) -> Unit,
     themeSweep: Boolean,
     onThemeSweepChange: (Boolean) -> Unit,
+    themeGlow: Float,
+    onThemeGlowChange: (Float) -> Unit,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
     tileFontSize: Float,
@@ -156,6 +159,15 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_theme_sweep),
                     checked = themeSweep,
                     onCheckedChange = onThemeSweepChange,
+                )
+            }
+            // Same rule for the glow slider; 0 hides the glow entirely.
+            if (themeById(themeId).accents.glow != null) {
+                SliderRow(
+                    label = stringResource(R.string.settings_theme_glow),
+                    value = themeGlow,
+                    valueRange = GlowDefaults.INTENSITY_MIN..GlowDefaults.INTENSITY_MAX,
+                    onValueChange = onThemeGlowChange,
                 )
             }
         }
