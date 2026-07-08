@@ -13,6 +13,12 @@ import androidx.compose.ui.graphics.Color
 data class ThemeAccents(
     /** BMW M tricolor, drawn by [MTricolor][com.vladutu.copilot.ui.MTricolor]; null = no stripes. */
     val stripes: List<Color>? = null,
+    /**
+     * Full-screen faded background wash, drawn by
+     * [TricolorSweep][com.vladutu.copilot.ui.TricolorSweep]; null = flat background.
+     * Separate from [stripes] so a theme can carry the badge without the wash.
+     */
+    val sweep: List<Color>? = null,
 )
 
 /**
@@ -78,6 +84,7 @@ val BmwTheme = ThemeSpec(
     typography = BmwTypography,
     accents = ThemeAccents(
         stripes = listOf(BmwStripeLightBlue, BmwStripeDarkBlue, BmwStripeRed),
+        sweep = listOf(BmwStripeLightBlue, BmwStripeDarkBlue, BmwStripeRed),
     ),
 )
 

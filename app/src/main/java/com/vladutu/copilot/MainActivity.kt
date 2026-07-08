@@ -11,6 +11,7 @@ import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -45,8 +46,10 @@ import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.settings.SettingsScreen
 import com.vladutu.copilot.ui.status.StatusScreen
+import com.vladutu.copilot.ui.TricolorSweep
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
 import com.vladutu.copilot.ui.theme.DefaultTheme
+import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 import com.vladutu.copilot.ui.theme.themeById
 import com.vladutu.copilot.ui.theme.TileAppearance
@@ -65,8 +68,13 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = DefaultTheme.id)
             CopilotDriveTheme(theme = themeById(themeId)) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    PermissionGate {
-                        CopilotNav(::leaveToOtherApp)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Screens draw no full-size backgrounds of their own, so a wash
+                        // layered here shows through every route in the gaps between tiles.
+                        LocalThemeSpec.current.accents.sweep?.let { TricolorSweep(it) }
+                        PermissionGate {
+                            CopilotNav(::leaveToOtherApp)
+                        }
                     }
                 }
             }
