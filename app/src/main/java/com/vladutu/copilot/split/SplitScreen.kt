@@ -89,6 +89,12 @@ object SplitScreen {
         if (targetPkg == ownPackage) return false
         if (!hasVisiblePartner(targetPkg)) return false
         if (targetPkg == focusedPackage && targetPkg in visiblePackages) return false
+        // Nav apps exit the split on their own while processing a destination deep link
+        // (Waze recreates its task as navigation starts — phone-verified: pane for ~2s,
+        // then the split collapses into the MUSIC app). Since the split is lost either
+        // way, deliver plain so the driver deterministically ends on fullscreen nav
+        // instead of fullscreen music.
+        if (targetPkg in NAV_PKGS && targetPkg in visiblePackages) return false
         return true
     }
 

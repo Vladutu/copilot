@@ -219,7 +219,7 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
     }
 
-    @Test fun `destination from copilot steps aside and rejoins the split via its own pane`() {
+    @Test fun `destination from copilot ends on plain nav delivery (waze exits splits on deep links)`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
         SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
@@ -230,7 +230,8 @@ class AppLauncherTest {
         assertTrue(res is AppLauncher.Result.Ok)
         assertEquals(1, steppedAside)
 
-        // Split resurfaces with the music pane focused → waze goes adjacent (= its own pane).
+        // Split resurfaces — but nav deep links collapse splits from inside Waze, so the
+        // policy delivers plain: the driver ends on fullscreen navigation, not fullscreen music.
         SplitScreen.onWindows(
             visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
             focused = AppLauncher.YT_MUSIC_PKG,
@@ -238,7 +239,7 @@ class AppLauncherTest {
         PairedLaunch.matchPartnerShown(AppLauncher.YT_MUSIC_PKG)!!.invoke()
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.WAZE_PKG, intent.`package`)
-        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
     }
 
     @Test fun `paired launch falls back to a direct launch when the nav partner is unresolvable`() {

@@ -44,10 +44,16 @@ class SplitScreenTest {
         assertFalse(SplitScreen.launchAdjacent(COPILOT))
     }
 
-    @Test fun `enabled - target in the unfocused pane launches adjacent (reuses its pane)`() {
+    @Test fun `enabled - music target in the unfocused pane launches adjacent (reuses its pane)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = WAZE)
+        assertTrue(SplitScreen.launchAdjacent(YTM))
+    }
+
+    @Test fun `enabled - nav target already in a pane is delivered plain (waze exits splits on deep links)`() {
         SplitScreen.enabled = true
         SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = YTM)
-        assertTrue(SplitScreen.launchAdjacent(WAZE))
+        assertFalse(SplitScreen.launchAdjacent(WAZE))
     }
 
     @Test fun `enabled - target owning the focused pane is not adjacent (double-Waze guard)`() {
