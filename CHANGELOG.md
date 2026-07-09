@@ -5,6 +5,15 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.22.0] - 2026-07-09
+
+### Added
+- Tiles-per-page sliders for the menu and list rails
+
+### Fixed
+- Only mirror pager settles caused by real finger drags
+- Keep the first knob event off the tap-only chrome
+
 ## [0.21.5] - 2026-07-08
 
 ### Added
@@ -303,6 +312,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.22.0]: https://github.com/Vladutu/copilot/compare/v0.21.5...v0.22.0
 [0.21.5]: https://github.com/Vladutu/copilot/compare/v0.21.4...v0.21.5
 [0.21.4]: https://github.com/Vladutu/copilot/compare/v0.21.3...v0.21.4
 [0.21.3]: https://github.com/Vladutu/copilot/compare/v0.21.2...v0.21.3
