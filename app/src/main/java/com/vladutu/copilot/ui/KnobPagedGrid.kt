@@ -28,7 +28,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.ui.lists.DotStrip
 import com.vladutu.copilot.ui.lists.PageIndicator
+import com.vladutu.copilot.ui.theme.LayoutMode
+import com.vladutu.copilot.ui.theme.LocalLayoutMode
 import com.vladutu.copilot.ui.theme.LocalPageSizes
+import com.vladutu.copilot.ui.theme.PageSizeDefaults
 
 /**
  * One caller-owned extra knob stop after the last tile of the last page — Home's Like
@@ -55,7 +58,12 @@ data class TrailingStop(
  *  - Page edges: last stop + right → next page first stop; first stop + left →
  *    previous page last stop. Stale positions after deletions are clamped.
  *
- * The rail is a single horizontal row of [pageSize] big tiles (redesign-spec §2b).
+ * The rail is a single horizontal row of [pageSize] big tiles (redesign-spec §2b); in
+ * portrait mode (LocalLayoutMode) the same page folds into rows of
+ * [PageSizeDefaults.PORTRAIT_COLUMNS], with [pageSize] rounded down to a column multiple
+ * so every page fills its grid, top-left to bottom-right. Slot order — and with
+ * it every stop, dot and focus index — stays reading order in both modes, so
+ * [KnobGridNav] never knows about columns.
  * [tile] receives the item and, when its page is the settled one, [stopsPerItem]
  * FocusRequesters in item-major knob order (all stops of item N before item N+1).
  * On non-settled pages it receives null and must not attach requesters.
@@ -91,11 +99,22 @@ fun <T> KnobPagedGrid(
     onRangeChange: ((String) -> Unit)? = null,
     tile: @Composable (item: T, focusRequesters: List<FocusRequester>?) -> Unit,
 ) {
-    val nav = remember(items.size, pageSize, stopsPerItem, trailingStop != null) {
-        KnobGridNav(items.size, pageSize, stopsPerItem, hasTrailingStop = trailingStop != null)
+    // Portrait pages must fill their grid exactly: an odd tiles-per-page would leave the
+    // last slot of EVERY page empty — reads as "cut off" mid-page with more pages still
+    // to come — so the setting rounds down to a multiple of the column count. Everything
+    // below (nav, focus, ranges, dots) works off this effective size, never the raw one.
+    val layoutMode = LocalLayoutMode.current
+    val pageTiles = if (layoutMode == LayoutMode.PORTRAIT) {
+        (pageSize / PageSizeDefaults.PORTRAIT_COLUMNS * PageSizeDefaults.PORTRAIT_COLUMNS)
+            .coerceAtLeast(PageSizeDefaults.PORTRAIT_COLUMNS)
+    } else {
+        pageSize
+    }
+    val nav = remember(items.size, pageTiles, stopsPerItem, trailingStop != null) {
+        KnobGridNav(items.size, pageTiles, stopsPerItem, hasTrailingStop = trailingStop != null)
     }
     val pagerState = rememberPagerState(pageCount = { nav.pageCount })
-    val tileFocus = remember(pageSize, stopsPerItem) { List(pageSize * stopsPerItem) { FocusRequester() } }
+    val tileFocus = remember(pageTiles, stopsPerItem) { List(pageTiles * stopsPerItem) { FocusRequester() } }
 
     // Single source of truth: the knob's page + stop. We drive the pager and the focus
     // FROM this state and never read pagerState.currentPage back into our logic. During a
@@ -151,10 +170,10 @@ fun <T> KnobPagedGrid(
     }
 
     // Report the visible item range for the caller's header count.
-    LaunchedEffect(pos.page, items.size, pageSize) {
+    LaunchedEffect(pos.page, items.size, pageTiles) {
         if (onRangeChange != null && items.isNotEmpty()) {
-            val start = pos.page * pageSize + 1
-            val end = minOf((pos.page + 1) * pageSize, items.size)
+            val start = pos.page * pageTiles + 1
+            val end = minOf((pos.page + 1) * pageTiles, items.size)
             onRangeChange("$start–$end / ${items.size}")
         }
     }
@@ -175,20 +194,38 @@ fun <T> KnobPagedGrid(
             state = pagerState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) { page ->
-            val start = page * pageSize
-            val pageItems = items.subList(start, minOf(start + pageSize, items.size))
-            // One horizontal rail of pageSize tiles, weighted so they share the row.
-            Row(
+            val start = page * pageTiles
+            val pageItems = items.subList(start, minOf(start + pageTiles, items.size))
+            // Landscape: the classic rail — one row of pageTiles weighted tiles (rows = 1
+            // makes the Column wrapper lay out exactly as the bare Row did). Portrait:
+            // the same slots wrap into PORTRAIT_COLUMNS-wide rows; a short last row (only
+            // the list's final page, since pageTiles is a column multiple) keeps its empty
+            // weighted boxes so tiles hold a uniform width.
+            val cols = if (layoutMode == LayoutMode.PORTRAIT) {
+                PageSizeDefaults.PORTRAIT_COLUMNS
+            } else {
+                pageTiles
+            }
+            val rows = pageTiles / cols
+            Column(
                 modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                for (i in 0 until pageSize) {
-                    Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-                        if (i < pageItems.size) {
-                            val requesters = if (page == pagerState.settledPage) {
-                                List(stopsPerItem) { s -> tileFocus[i * stopsPerItem + s] }
-                            } else null
-                            tile(pageItems[i], requesters)
+                for (r in 0 until rows) {
+                    Row(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        for (c in 0 until cols) {
+                            val i = r * cols + c
+                            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                                if (i < pageItems.size) {
+                                    val requesters = if (page == pagerState.settledPage) {
+                                        List(stopsPerItem) { s -> tileFocus[i * stopsPerItem + s] }
+                                    } else null
+                                    tile(pageItems[i], requesters)
+                                }
+                            }
                         }
                     }
                 }
@@ -199,7 +236,7 @@ fun <T> KnobPagedGrid(
             contentAlignment = Alignment.Center,
         ) {
             val dotCount = items.size + if (trailingStop != null) 1 else 0
-            if (dotCount >= 2 && (perItemDots || items.size <= pageSize)) {
+            if (dotCount >= 2 && (perItemDots || items.size <= pageTiles)) {
                 // Focus moving between two stops of the same item (Discover's name + play
                 // zones) keeps the pill on that item's dot. The trailing stop owns the
                 // last dot, drawn as the heart.

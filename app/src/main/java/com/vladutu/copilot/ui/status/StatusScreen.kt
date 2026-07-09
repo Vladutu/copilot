@@ -36,6 +36,8 @@ import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.service.RecentEvent
 import com.vladutu.copilot.service.UiState
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.theme.LayoutMode
+import com.vladutu.copilot.ui.theme.LocalLayoutMode
 import com.vladutu.copilot.ui.theme.PilotOk
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -57,32 +59,57 @@ fun StatusScreen(state: UiState, onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         ScreenHeader(title = "Status", onBack = onBack)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
+        if (LocalLayoutMode.current == LayoutMode.PORTRAIT) {
+            // No width for side-by-side cards on an upright panel: hero (+skew) stacks
+            // above the events list, keeping the same 38/62 share top-to-bottom.
             Column(
                 modifier = Modifier
-                    .weight(38f)
-                    .fillMaxHeight(),
+                    .fillMaxWidth()
+                    .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 ConnectionHero(
                     state = state,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(38f),
                 )
                 state.skewSec?.let { SkewCard(it) }
+                RecentEventsCard(
+                    events = state.recent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(62f),
+                )
             }
-            RecentEventsCard(
-                events = state.recent,
+        } else {
+            Row(
                 modifier = Modifier
-                    .weight(62f)
-                    .fillMaxHeight(),
-            )
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(38f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    ConnectionHero(
+                        state = state,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                    state.skewSec?.let { SkewCard(it) }
+                }
+                RecentEventsCard(
+                    events = state.recent,
+                    modifier = Modifier
+                        .weight(62f)
+                        .fillMaxHeight(),
+                )
+            }
         }
     }
 }

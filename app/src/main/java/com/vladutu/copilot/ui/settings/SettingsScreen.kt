@@ -60,6 +60,7 @@ import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
 import com.vladutu.copilot.ui.theme.AllThemes
+import com.vladutu.copilot.ui.theme.LayoutMode
 import com.vladutu.copilot.ui.theme.PageSizeDefaults
 import com.vladutu.copilot.ui.theme.PilotOk
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
@@ -80,6 +81,8 @@ fun SettingsScreen(
     onThemeSweepChange: (Boolean) -> Unit,
     themeGlow: Float,
     onThemeGlowChange: (Float) -> Unit,
+    layoutMode: LayoutMode,
+    onLayoutModeChange: (LayoutMode) -> Unit,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
     tileFontSize: Float,
@@ -175,6 +178,14 @@ fun SettingsScreen(
                     onValueChange = onThemeGlowChange,
                 )
             }
+            // Landscape is the wide-rail layout the app shipped with; Portrait rotates
+            // the activity and folds the rails into two-column grids for upright panels.
+            DropdownRow(
+                label = stringResource(R.string.settings_layout_label),
+                selectedLabel = layoutMode.label,
+                options = LayoutMode.entries.map { it.id to it.label },
+                onSelect = { onLayoutModeChange(LayoutMode.fromId(it)) },
+            )
         }
 
         SettingsSection(title = stringResource(R.string.settings_general_label)) {

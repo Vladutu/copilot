@@ -30,6 +30,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Copilot">
 
+        <!-- screenOrientation is only the pre-compose default; the Display > Orientation
+             setting overrides it at runtime (see MainActivity). -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

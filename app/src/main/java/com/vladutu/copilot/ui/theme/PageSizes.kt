@@ -23,6 +23,11 @@ object PageSizeDefaults {
     // Slider bounds exposed in Settings.
     const val MIN = 2f
     const val MAX = 8f
+
+    // Columns per grid row in portrait mode; landscape keeps the single
+    // pageSize-wide row. Two is the widest that leaves drivable tap targets
+    // on an upright panel.
+    const val PORTRAIT_COLUMNS = 2
 }
 
 val LocalPageSizes = staticCompositionLocalOf { PageSizes() }

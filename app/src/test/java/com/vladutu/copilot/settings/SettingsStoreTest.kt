@@ -3,6 +3,7 @@ package com.vladutu.copilot.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import com.vladutu.copilot.ui.theme.LayoutMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
@@ -136,6 +137,17 @@ class SettingsStoreTest {
         assertEquals("bmw", store.themeFlow.first())
         store.setTheme("default")
         assertEquals("default", store.themeFlow.first())
+    }
+
+    @Test fun `layout mode defaults to landscape`() = runTest {
+        assertEquals(LayoutMode.LANDSCAPE, store.layoutModeFlow.first())
+    }
+
+    @Test fun `setLayoutMode round-trips`() = runTest {
+        store.setLayoutMode(LayoutMode.PORTRAIT)
+        assertEquals(LayoutMode.PORTRAIT, store.layoutModeFlow.first())
+        store.setLayoutMode(LayoutMode.LANDSCAPE)
+        assertEquals(LayoutMode.LANDSCAPE, store.layoutModeFlow.first())
     }
 
     @Test fun `waze-go label defaults to Go now`() = runTest {

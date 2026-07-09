@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.theme.DefaultTheme
+import com.vladutu.copilot.ui.theme.LayoutMode
 import com.vladutu.copilot.ui.theme.PageSizeDefaults
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import com.vladutu.copilot.waze.WazeGoDefaults
@@ -58,6 +59,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setThemeGlow(percent: Float) {
         dataStore.edit { prefs -> prefs[KEY_THEME_GLOW] = percent }
+    }
+
+    /** Screen orientation + rail layout; unknown ids resolve to Landscape at read time. */
+    val layoutModeFlow: Flow<LayoutMode> = dataStore.data.map { prefs ->
+        LayoutMode.fromId(prefs[KEY_LAYOUT_MODE])
+    }
+
+    suspend fun setLayoutMode(mode: LayoutMode) {
+        dataStore.edit { prefs -> prefs[KEY_LAYOUT_MODE] = mode.id }
     }
 
     /** Tile label text size in sp; defaults to the value tiles shipped with. */
@@ -151,6 +161,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_THEME = stringPreferencesKey("theme")
         val KEY_THEME_SWEEP = booleanPreferencesKey("theme_sweep")
         val KEY_THEME_GLOW = floatPreferencesKey("theme_glow_intensity")
+        val KEY_LAYOUT_MODE = stringPreferencesKey("layout_mode")
         val KEY_NTFY_TOPIC = stringPreferencesKey("ntfy_topic")
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")

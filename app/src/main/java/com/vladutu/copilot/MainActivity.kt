@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
@@ -17,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +53,8 @@ import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.TricolorSweep
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
 import com.vladutu.copilot.ui.theme.DefaultTheme
+import com.vladutu.copilot.ui.theme.LayoutMode
+import com.vladutu.copilot.ui.theme.LocalLayoutMode
 import com.vladutu.copilot.ui.theme.LocalPageSizes
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
@@ -75,6 +79,19 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = true)
             val themeGlow by (application as CopilotApp).locator.settingsStore.themeGlowFlow
                 .collectAsStateWithLifecycle(initialValue = GlowDefaults.INTENSITY_DEFAULT)
+            val layoutMode by (application as CopilotApp).locator.settingsStore.layoutModeFlow
+                .collectAsStateWithLifecycle(initialValue = LayoutMode.LANDSCAPE)
+            // The manifest boots the activity sensorLandscape (the default mode); Portrait
+            // applies here once the persisted setting arrives. configChanges declares
+            // orientation, so the flip re-measures the composition in place — no activity
+            // recreate, same as a theme change.
+            LaunchedEffect(layoutMode) {
+                requestedOrientation = when (layoutMode) {
+                    LayoutMode.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    LayoutMode.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                }
+            }
+            CompositionLocalProvider(LocalLayoutMode provides layoutMode) {
             CopilotDriveTheme(theme = themeById(themeId)) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -94,6 +111,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -336,6 +354,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = true)
             val themeGlow by app.locator.settingsStore.themeGlowFlow
                 .collectAsStateWithLifecycle(initialValue = GlowDefaults.INTENSITY_DEFAULT)
+            val layoutMode by app.locator.settingsStore.layoutModeFlow
+                .collectAsStateWithLifecycle(initialValue = LayoutMode.LANDSCAPE)
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
@@ -357,6 +377,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 themeGlow = themeGlow,
                 onThemeGlowChange = { percent ->
                     app.applicationScope.launch { app.locator.settingsStore.setThemeGlow(percent) }
+                },
+                layoutMode = layoutMode,
+                onLayoutModeChange = { mode ->
+                    app.applicationScope.launch { app.locator.settingsStore.setLayoutMode(mode) }
                 },
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->

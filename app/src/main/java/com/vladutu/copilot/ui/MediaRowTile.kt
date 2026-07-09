@@ -16,11 +16,13 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -222,7 +224,13 @@ private fun TileVisual(
     @DrawableRes fallbackRes: Int?,
     label: String,
 ) {
-    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+    // Capped square: exactly [size] wherever the tile is wide enough (the landscape
+    // rails as shipped), shrinking to the tile's content width on narrower tiles
+    // (portrait's two-column grid) instead of overflowing the card.
+    Box(
+        modifier = Modifier.sizeIn(maxWidth = size, maxHeight = size).aspectRatio(1f),
+        contentAlignment = Alignment.Center,
+    ) {
         when {
             busy -> CircularProgressIndicator(
                 modifier = Modifier.size(48.dp),
