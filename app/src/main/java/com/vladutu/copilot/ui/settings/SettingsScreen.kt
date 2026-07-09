@@ -85,6 +85,8 @@ fun SettingsScreen(
     onLayoutModeChange: (LayoutMode) -> Unit,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
+    splitScreen: Boolean,
+    onSplitScreenChange: (Boolean) -> Unit,
     tileFontSize: Float,
     onTileFontSizeChange: (Float) -> Unit,
     tileBorderWidth: Float,
@@ -193,6 +195,14 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_autostart_label),
                 checked = autoStart,
                 onCheckedChange = onAutoStartChange,
+            )
+            // Off = every launch is fullscreen. On = commands and app tiles ask for a
+            // split pane (nav one side, music the other); Copilot itself always stays
+            // fullscreen. Placement follows launch order — see split/SplitScreen.kt.
+            SwitchRow(
+                label = stringResource(R.string.settings_split_screen_label),
+                checked = splitScreen,
+                onCheckedChange = onSplitScreenChange,
             )
         }
 

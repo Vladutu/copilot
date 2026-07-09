@@ -4,17 +4,25 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.vladutu.copilot.autoswitch.AutoSwitchBack
+import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
+import com.vladutu.copilot.split.CopilotForeground
+import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitScreen
 
 class AppLauncher(
     private val context: Context,
     private val soundCloudPauser: SoundCloudPauser = SoundCloudPauser(context),
 ) {
+
+    private val handler = Handler(Looper.getMainLooper())
 
     sealed class Result {
         object Ok : Result()
@@ -38,14 +46,14 @@ class AppLauncher(
     fun openWazeApp(): Result {
         val launch = context.packageManager.getLaunchIntentForPackage(WAZE_PKG)
             ?: return Result.Failed("Waze not installed")
-        return startNewTask(launch)
+        return startNewTask(launch, WAZE_PKG)
     }
 
     /** Open Google Maps app (no nav target). */
     fun openMapsApp(): Result {
         val launch = context.packageManager.getLaunchIntentForPackage(MAPS_PKG)
             ?: return Result.Failed("Google Maps not installed")
-        return startNewTask(launch)
+        return startNewTask(launch, MAPS_PKG)
     }
 
     private fun cmdForForm(form: Form) = when (form) {
@@ -79,31 +87,102 @@ class AppLauncher(
         // — the same thing that works manually. No-op when nothing is playing.
         if (cmd == "soundcloud") soundCloudPauser.pauseIfPlaying()
 
-        // LAUNCH_ADJACENT keeps an active split-screen alive: the deep link lands in the
-        // target's existing pane instead of dissolving the split into a fullscreen launch.
-        // Android ignores the flag whenever the screen isn't split, so the normal
-        // fullscreen path is unaffected.
+        // maps launches leave intent.package unset (App Links, see above), but the split
+        // policy still needs to know which app the command is for.
+        val policyPkg = targetPkg ?: MAPS_PKG
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
             if (targetPkg != null) setPackage(targetPkg)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        // Song/playlist launches go to the music app's foreground (YT Music or SoundCloud);
-        // arm the auto-return so the accessibility service brings us back once it has loaded.
-        // These cmds imply form is SONG or PLAYLIST (enforced by Message validation). Radio
-        // (VLC, background) and maps/waze (nav stays foreground) are deliberately not armed.
-        if (cmd == "ytmusic" || cmd == "soundcloud") AutoSwitchBack.arm()
+        // Auto-return only for song/playlist launches that take over the foreground (YT Music
+        // or SoundCloud; cmds imply form SONG/PLAYLIST via Message validation). Radio (VLC,
+        // background) and maps/waze (nav stays foreground) are deliberately not armed.
+        return dispatch(intent, policyPkg, missingMsg, armAutoSwitch = cmd == "ytmusic" || cmd == "soundcloud")
+    }
 
+    /**
+     * Start [intent] under the split policy. Shapes:
+     *  - paired launch (from-Copilot music launch, [SplitScreen.pairingPartnerFor]): get the
+     *    nav partner on screen, then fire the deep link once the accessibility service
+     *    confirms it's visible. When Copilot is the foreground activity it steps aside first
+     *    (moveTaskToBack): a split covered by Copilot resurfaces intact, whereas relaunching
+     *    one of its members with startActivity rips it out and dissolves the pair
+     *    (emulator-verified). Only if nothing resurfaces within the reveal TTL do we launch
+     *    the partner ourselves. The adjacent-vs-fullscreen flag is decided at fire time from
+     *    the fresh window snapshot, and a final TTL guarantees the song plays regardless.
+     *  - single adjacent launch when a visible partner pane already exists;
+     *  - plain fullscreen otherwise (or whenever the split toggle is off).
+     * Auto-return is deliberately not armed on the paired path: the driver asked for the
+     * split, so pulling Copilot (the arm-time foreground) back on top would cover it.
+     */
+    private fun dispatch(intent: Intent, targetPkg: String, missingMsg: String, armAutoSwitch: Boolean): Result {
+        val partner = SplitScreen.pairingPartnerFor(targetPkg)
+        if (partner != null) {
+            val fire = {
+                val adjacent = SplitScreen.launchAdjacent(targetPkg)
+                if (adjacent) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+                DiagnosticLog.i(TAG, "paired fire $targetPkg adjacent=$adjacent — ${SplitScreen.stateForDiagnostics()}")
+                startSilently(intent)
+            }
+            val stepAside = CopilotForeground.stepAside
+            if (stepAside != null) {
+                DiagnosticLog.i(TAG, "paired launch: stepping aside, waiting for $partner — ${SplitScreen.stateForDiagnostics()}")
+                val token = PairedLaunch.arm(partner, paired = fire, timeout = { launchPartner(partner, fire) })
+                handler.postDelayed({ PairedLaunch.takeTimeout(token)?.invoke() }, PairedLaunch.REVEAL_TTL_MS)
+                stepAside()
+            } else {
+                DiagnosticLog.i(TAG, "paired launch: $partner first — ${SplitScreen.stateForDiagnostics()}")
+                launchPartner(partner, fire)
+            }
+            return Result.Ok
+        }
+        return startDirect(intent, targetPkg, missingMsg, armAutoSwitch)
+    }
+
+    /** Second stage when no covered split resurfaced (or Copilot wasn't the foreground
+     *  activity): bring the partner up ourselves, fire on the service's confirmation, with
+     *  a TTL so the song still plays if the partner never shows. */
+    private fun launchPartner(partner: String, fire: () -> Unit) {
+        val partnerIntent = context.packageManager.getLaunchIntentForPackage(partner)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        val started = partnerIntent != null && runCatching { context.startActivity(partnerIntent) }.isSuccess
+        if (!started) {
+            DiagnosticLog.w(TAG, "pair partner $partner could not start — firing directly")
+            fire()
+            return
+        }
+        DiagnosticLog.i(TAG, "pair partner $partner launched, firing on confirm")
+        val token = PairedLaunch.arm(partner, paired = fire, timeout = {
+            DiagnosticLog.w(TAG, "pair TTL expired ($partner never confirmed) — firing anyway")
+            fire()
+        })
+        handler.postDelayed({ PairedLaunch.takeTimeout(token)?.invoke() }, PairedLaunch.PAIR_TTL_MS)
+    }
+
+    private fun startDirect(intent: Intent, targetPkg: String, missingMsg: String, armAutoSwitch: Boolean): Result {
+        val adjacent = SplitScreen.launchAdjacent(targetPkg)
+        if (adjacent) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+        DiagnosticLog.i(TAG, "direct launch $targetPkg adjacent=$adjacent — ${SplitScreen.stateForDiagnostics()}")
+        if (armAutoSwitch) AutoSwitchBack.arm()
         return try {
             context.startActivity(intent)
             Result.Ok
         } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "no activity for cmd=$cmd pkg=${targetPkg ?: "<unset>"} url=$url", e)
+            Log.w(TAG, "no activity for pkg=$targetPkg url=${intent.data}", e)
             Result.Failed(missingMsg)
         } catch (e: SecurityException) {
             Log.w(TAG, "background activity start blocked", e)
             Result.Failed("background launch blocked — grant Display over other apps")
         }
+    }
+
+    /** Deferred half of a paired launch: by the time it fires the command was already
+     *  acked, so failures can only be logged, not surfaced. */
+    private fun startSilently(intent: Intent) {
+        runCatching { context.startActivity(intent) }
+            .onSuccess { DiagnosticLog.i(TAG, "paired second stage started: ${intent.`package` ?: intent.data} flags=0x${intent.flags.toString(16)}") }
+            .onFailure { DiagnosticLog.w(TAG, "paired launch failed for ${intent.`package` ?: intent.data}", it) }
     }
 
     // Build the VLC launch intent for a radio stream. Internal + pure so it can be
@@ -115,25 +194,16 @@ class AppLauncher(
         Intent(Intent.ACTION_VIEW).apply {
             setPackage(VLC_PKG)
             setDataAndTypeAndNormalize(Uri.parse(url), "audio/*")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             title?.let { putExtra("title", it) }
         }
 
-    private fun launchRadio(url: String, title: String?): Result {
-        return try {
-            context.startActivity(buildRadioIntent(url, title))
-            Result.Ok
-        } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "no activity for radio url=$url", e)
-            Result.Failed("VLC not installed")
-        } catch (e: SecurityException) {
-            Log.w(TAG, "background activity start blocked", e)
-            Result.Failed("background launch blocked — grant Display over other apps")
-        }
-    }
+    private fun launchRadio(url: String, title: String?): Result =
+        dispatch(buildRadioIntent(url, title), VLC_PKG, "VLC not installed", armAutoSwitch = false)
 
-    private fun startNewTask(intent: Intent): Result {
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+    private fun startNewTask(intent: Intent, targetPkg: String): Result {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (SplitScreen.launchAdjacent(targetPkg)) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
         return try {
             context.startActivity(intent); Result.Ok
         } catch (e: ActivityNotFoundException) {

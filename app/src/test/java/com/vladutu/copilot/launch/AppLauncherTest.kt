@@ -7,6 +7,9 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
+import com.vladutu.copilot.split.CopilotForeground
+import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitScreen
 import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +40,10 @@ class AppLauncherTest {
         context = ApplicationProvider.getApplicationContext()
         pauser = FakePauser(context)
         launcher = AppLauncher(context, soundCloudPauser = pauser)
+        SplitScreen.reset()
+        SplitScreen.ownPackage = context.packageName
+        PairedLaunch.clear()
+        CopilotForeground.stepAside = null
     }
 
     private fun msg(cmd: String, form: Form, url: String) =
@@ -141,17 +148,88 @@ class AppLauncherTest {
         assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
     }
 
-    @Test fun `command launch carries LAUNCH_ADJACENT so an active split-screen survives`() {
+    @Test fun `split toggle off - command launch is plain fullscreen`() {
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+    }
+
+    @Test fun `split toggle on - music command with a visible nav pane launches adjacent`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
         launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
     }
 
-    @Test fun `radio launch carries LAUNCH_ADJACENT so an active split-screen survives`() {
+    @Test fun `split toggle on - radio with a visible nav pane launches adjacent too`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
         launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+    }
+
+    @Test fun `split toggle on - launch with only copilot on screen stays fullscreen`() {
+        // Adjacent pairs with the focused task; with Copilot focused that would drag
+        // Copilot itself into the split (emulator finding #1).
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+    }
+
+    @Test fun `split toggle on - command for the focused pane's app stays non-adjacent`() {
+        // Relaunching the focused pane's app adjacent duplicates it into the other half
+        // (the double-Waze); the policy must strip the flag in that case.
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
+            focused = AppLauncher.WAZE_PKG,
+        )
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+    }
+
+    @Test fun `paired launch steps copilot aside and fires adjacent when the split resurfaces`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
+        SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
+        var steppedAside = 0
+        CopilotForeground.stepAside = { steppedAside++ }
+
+        val res = launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        assertEquals(1, steppedAside)
+        // Nothing started yet — the deep link waits for the covered split to resurface.
+        assertNull(shadowOf(context as android.app.Application).nextStartedActivity)
+
+        // Split resurfaces (what the service's window snapshot would report), continuation fires.
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
+            focused = AppLauncher.WAZE_PKG,
+        )
+        PairedLaunch.matchPartnerShown(AppLauncher.WAZE_PKG)!!.invoke()
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+    }
+
+    @Test fun `paired launch falls back to a direct launch when the nav partner is unresolvable`() {
+        // Two-step conditions met (music from Copilot, Waze seen earlier) but Robolectric
+        // can't resolve a Waze launch intent — the deep link must still fire, fullscreen.
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
+        SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
+        val res = launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
     }
 
     @Test fun `arms autoswitch for ytmusic launch`() {

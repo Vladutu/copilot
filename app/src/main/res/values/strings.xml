@@ -57,6 +57,7 @@
     <string name="liked_listener_label">Copilot now-playing</string>
     <string name="settings_title">Settings</string>
     <string name="settings_autostart_label">Start Copilot when the car turns on</string>
+    <string name="settings_split_screen_label">Open apps in split screen</string>
     <string name="settings_tiles_label">Tiles</string>
     <string name="settings_tile_font_size">Tile text size</string>
     <string name="settings_tile_border_width">Highlighted tile border</string>

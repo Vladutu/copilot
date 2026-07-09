@@ -8,6 +8,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.vladutu.copilot.di.ServiceLocator
 import com.vladutu.copilot.diagnostics.DiagnosticLog
+import com.vladutu.copilot.split.SplitScreen
+import kotlinx.coroutines.launch
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.text.SimpleDateFormat
@@ -26,6 +28,12 @@ class CopilotApp : Application() {
         DiagnosticLog.init(this)
         DiagnosticLog.i("App", "CopilotApp.onCreate (pid=${android.os.Process.myPid()})")
         installCrashHandler()
+        // Split-screen launch policy: stamp our own package (Copilot never launches itself
+        // into a pane) and mirror the Settings toggle for synchronous reads at launch time.
+        SplitScreen.ownPackage = packageName
+        applicationScope.launch {
+            locator.settingsStore.splitScreenFlow.collect { SplitScreen.enabled = it }
+        }
         val mgr = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,

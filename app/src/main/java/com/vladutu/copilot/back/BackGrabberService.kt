@@ -11,11 +11,14 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.vladutu.copilot.CopilotApp
 import com.vladutu.copilot.MainActivity
 import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
+import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitScreen
 import com.vladutu.copilot.waze.GoNodeMatcher
 import com.vladutu.copilot.waze.GoTapDecider
 import com.vladutu.copilot.waze.WazeGoDefaults
@@ -74,7 +77,8 @@ class BackGrabberService : AccessibilityService() {
         // XML one, or vice-versa.
         runCatching {
             serviceInfo = serviceInfo.apply {
-                flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+                flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             }
         }
         AutoSwitchBack.ownPackage = applicationContext.packageName
@@ -86,7 +90,15 @@ class BackGrabberService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val type = event?.eventType ?: return
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        ) return
+        // Both event types can change what's on screen / who has focus; keep the split
+        // policy's window snapshot current before any launch decision reads it.
+        updateWindowSnapshot()
+        maybeFirePairedLaunch()
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
 
         // Only track packages we could actually return to. Overlay / floating-widget apps
@@ -97,6 +109,7 @@ class BackGrabberService : AccessibilityService() {
         // abort. Filtering to restorable packages keeps `currentForeground` on the real app.
         if (!isRestorable(pkg)) return
         AutoSwitchBack.onForeground(pkg)
+        SplitScreen.onForeground(pkg)
 
         if (pkg in AutoSwitchBack.MUSIC_PKGS &&
             AutoSwitchBack.shouldScheduleOnMusicAppShown() &&
@@ -106,6 +119,56 @@ class BackGrabberService : AccessibilityService() {
             DiagnosticLog.i(TAG, "$pkg shown while armed — switch-back in ${AutoSwitchBack.SETTLE_MS}ms")
             handler.postDelayed({ fireSwitchBack() }, AutoSwitchBack.SETTLE_MS)
         }
+    }
+
+    /** Second half of a paired launch: the awaited nav partner is now visible — either the
+     *  split Copilot stepped away from resurfaced, or the partner AppLauncher started came
+     *  up. Matched on window-snapshot visibility, not the event's package: a resurfacing
+     *  split may only emit state-changed events for its focused half. */
+    private fun maybeFirePairedLaunch() {
+        val partner = PairedLaunch.pendingPartner() ?: return
+        if (!SplitScreen.isVisible(partner)) return
+        PairedLaunch.matchPartnerShown(partner)?.let { fire ->
+            DiagnosticLog.i(TAG, "pair partner $partner visible — entering split in ${PairedLaunch.PARTNER_SETTLE_MS}ms")
+            handler.postDelayed({ enterSplitThenFire(fire) }, PairedLaunch.PARTNER_SETTLE_MS)
+        }
+    }
+
+    /**
+     * Third stage of the two-step split build. LAUNCH_ADJACENT can only place an app into an
+     * *existing* split — a background caller can't create one with the flag alone (emulator:
+     * the deep link just opened fullscreen over the partner). So: enter split mode via the
+     * global action (the programmatic long-press-Recents — puts the focused nav partner into
+     * a pane), give the system a beat to engage, then fire the adjacent deep link into the
+     * other pane. If the split is somehow already live, toggling would tear it down — skip
+     * straight to the deep link. When the toggle is unsupported (dispatch returns false) the
+     * deep link still fires and lands fullscreen, which is the same fallback the TTL gives.
+     */
+    private fun enterSplitThenFire(fire: () -> Unit) {
+        if (SplitScreen.isSplitActive()) {
+            DiagnosticLog.i(TAG, "split already active — firing deep link directly")
+            fire()
+            return
+        }
+        val dispatched = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+        DiagnosticLog.i(TAG, "toggle split dispatched=$dispatched — deep link in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
+        handler.postDelayed(fire, PairedLaunch.SPLIT_ENGAGE_MS)
+    }
+
+    /** Publish which real apps have a window on screen (and which is focused) to the split
+     *  policy. Same restorable filter as [onAccessibilityEvent]: overlays and system windows
+     *  (the bubble, floating widgets, volume HUD) must not read as split panes. */
+    private fun updateWindowSnapshot() {
+        val visible = LinkedHashSet<String>()
+        var focused: String? = null
+        for (window in windows) {
+            if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            val pkg = window.root?.packageName?.toString() ?: continue
+            if (!isRestorable(pkg)) continue
+            visible.add(pkg)
+            if (window.isFocused) focused = pkg
+        }
+        SplitScreen.onWindows(visible, focused)
     }
 
     /** Cache of package -> "has a launcher activity". Launchability doesn't change at runtime,
@@ -138,6 +201,14 @@ class BackGrabberService : AccessibilityService() {
     }
 
     private fun restoreApp(pkg: String) {
+        // In a live split the target was never covered — it is still on screen next to the
+        // music app — so there is nothing to restore, and relaunching would only reshuffle
+        // panes. Gated on the toggle so the feature-off state behaves exactly as it did
+        // before split support existed.
+        if (SplitScreen.enabled && SplitScreen.isVisible(pkg)) {
+            DiagnosticLog.i(TAG, "switch-back skipped — $pkg still visible (split pane)")
+            return
+        }
         val intent = if (pkg == applicationContext.packageName) {
             // REORDER_TO_FRONT preserves Copilot's nav back stack (driver returns to the
             // screen they were last on rather than resetting to Home).
@@ -149,11 +220,11 @@ class BackGrabberService : AccessibilityService() {
             DiagnosticLog.w(TAG, "no launch intent for $pkg — staying in the music app")
             return
         }
-        // LAUNCH_ADJACENT: when the screen is split, bring the target forward inside its
-        // pane instead of dissolving the split into a fullscreen launch; ignored otherwise.
+        // The split policy decides pane vs fullscreen: never a pane for Copilot itself,
+        // adjacent for a covered target when the split toggle is on (inert outside split mode).
         intent.addFlags(
             Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
+                (if (SplitScreen.launchAdjacent(pkg)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0),
         )
         runCatching { applicationContext.startActivity(intent) }
             .onSuccess { DiagnosticLog.i(TAG, "switched back to $pkg") }
@@ -233,13 +304,10 @@ class BackGrabberService : AccessibilityService() {
     private fun bringCopilotToFront() {
         // REORDER_TO_FRONT preserves the activity's nav back stack, so Copilot
         // returns to the screen the driver was last on rather than resetting Home.
-        // LAUNCH_ADJACENT: in split-screen, open Copilot into the focused pane and keep
-        // the other app visible instead of going fullscreen; ignored when not split.
+        // Deliberately no LAUNCH_ADJACENT: Copilot always comes back fullscreen,
+        // never as a split pane.
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            addFlags(
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
-            )
+            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         applicationContext.startActivity(intent)
     }

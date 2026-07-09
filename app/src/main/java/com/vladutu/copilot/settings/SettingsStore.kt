@@ -115,6 +115,16 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_LIST_PAGE_SIZE] = tiles }
     }
 
+    /** Whether launches may join/create a split screen (nav one pane, music the other).
+     *  Defaults off: fullscreen launches unless the driver opts in. */
+    val splitScreenFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_SPLIT_SCREEN] ?: false
+    }
+
+    suspend fun setSplitScreen(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_SPLIT_SCREEN] = enabled }
+    }
+
     /** Whether a knob press taps Waze's "Go now". Defaults on. */
     val wazeGoEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_WAZE_GO_ENABLED] ?: true
@@ -168,6 +178,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_TILE_FOCUS_FILL = booleanPreferencesKey("tile_focus_fill")
         val KEY_MENU_PAGE_SIZE = intPreferencesKey("menu_page_size")
         val KEY_LIST_PAGE_SIZE = intPreferencesKey("list_page_size")
+        val KEY_SPLIT_SCREEN = booleanPreferencesKey("split_screen_launches")
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
     }

@@ -38,6 +38,7 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.MediaListenerService
 import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.split.CopilotForeground
 import com.vladutu.copilot.ui.diagnostics.LogsScreen
 import com.vladutu.copilot.ui.discover.BrowseResultsScreen
 import com.vladutu.copilot.ui.discover.DiscoverScreen
@@ -123,11 +124,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         BubbleController.onActivityResumed(this)
+        // Paired split launches ask Copilot to step out of the way instead of relaunching
+        // a split member over it (which would dissolve the pair) — see CopilotForeground.
+        CopilotForeground.stepAside = { moveTaskToBack(true) }
     }
 
     override fun onPause() {
         super.onPause()
         BubbleController.onActivityPaused(this)
+        CopilotForeground.stepAside = null
     }
 
     // The BMW iDrive knob arrives via the carbox's CarPlay bridge as one set of
@@ -358,6 +363,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = LayoutMode.LANDSCAPE)
             val autoStart by app.locator.settingsStore.autoStartFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val splitScreen by app.locator.settingsStore.splitScreenFlow
+                .collectAsStateWithLifecycle(initialValue = false)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
                 .collectAsStateWithLifecycle(initialValue = true)
             val wazeGoLabel by app.locator.settingsStore.wazeGoLabelFlow
@@ -385,6 +392,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 autoStart = autoStart,
                 onAutoStartChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setAutoStart(enabled) }
+                },
+                splitScreen = splitScreen,
+                onSplitScreenChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setSplitScreen(enabled) }
                 },
                 tileFontSize = tileFontSize,
                 onTileFontSizeChange = { sp ->
