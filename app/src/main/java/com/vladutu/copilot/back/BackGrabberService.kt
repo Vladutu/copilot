@@ -149,7 +149,12 @@ class BackGrabberService : AccessibilityService() {
             DiagnosticLog.w(TAG, "no launch intent for $pkg — staying in the music app")
             return
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+        // LAUNCH_ADJACENT: when the screen is split, bring the target forward inside its
+        // pane instead of dissolving the split into a fullscreen launch; ignored otherwise.
+        intent.addFlags(
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
+        )
         runCatching { applicationContext.startActivity(intent) }
             .onSuccess { DiagnosticLog.i(TAG, "switched back to $pkg") }
             .onFailure { DiagnosticLog.w(TAG, "switch-back startActivity failed for $pkg", it) }
@@ -228,8 +233,13 @@ class BackGrabberService : AccessibilityService() {
     private fun bringCopilotToFront() {
         // REORDER_TO_FRONT preserves the activity's nav back stack, so Copilot
         // returns to the screen the driver was last on rather than resetting Home.
+        // LAUNCH_ADJACENT: in split-screen, open Copilot into the focused pane and keep
+        // the other app visible instead of going fullscreen; ignored when not split.
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
+            )
         }
         applicationContext.startActivity(intent)
     }

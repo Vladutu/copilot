@@ -79,9 +79,13 @@ class AppLauncher(
         // — the same thing that works manually. No-op when nothing is playing.
         if (cmd == "soundcloud") soundCloudPauser.pauseIfPlaying()
 
+        // LAUNCH_ADJACENT keeps an active split-screen alive: the deep link lands in the
+        // target's existing pane instead of dissolving the split into a fullscreen launch.
+        // Android ignores the flag whenever the screen isn't split, so the normal
+        // fullscreen path is unaffected.
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
             if (targetPkg != null) setPackage(targetPkg)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
         }
 
         // Song/playlist launches go to the music app's foreground (YT Music or SoundCloud);
@@ -111,7 +115,7 @@ class AppLauncher(
         Intent(Intent.ACTION_VIEW).apply {
             setPackage(VLC_PKG)
             setDataAndTypeAndNormalize(Uri.parse(url), "audio/*")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
             title?.let { putExtra("title", it) }
         }
 
@@ -129,7 +133,7 @@ class AppLauncher(
     }
 
     private fun startNewTask(intent: Intent): Result {
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
         return try {
             context.startActivity(intent); Result.Ok
         } catch (e: ActivityNotFoundException) {

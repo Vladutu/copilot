@@ -98,8 +98,13 @@ class BubbleView(
         // REORDER_TO_FRONT brings the existing activity (and its in-memory nav
         // back stack) forward, so Copilot reopens on whatever screen the driver
         // last had — we deliberately don't reset to Home.
+        // LAUNCH_ADJACENT: in split-screen, open Copilot into the focused pane and keep
+        // the other app visible instead of going fullscreen; ignored when not split.
         val intent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
+            )
         }
         context.startActivity(intent)
     }

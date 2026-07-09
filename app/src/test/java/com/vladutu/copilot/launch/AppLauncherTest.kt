@@ -141,6 +141,19 @@ class AppLauncherTest {
         assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
     }
 
+    @Test fun `command launch carries LAUNCH_ADJACENT so an active split-screen survives`() {
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+    }
+
+    @Test fun `radio launch carries LAUNCH_ADJACENT so an active split-screen survives`() {
+        launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+    }
+
     @Test fun `arms autoswitch for ytmusic launch`() {
         AutoSwitchBack.disarm()
         AutoSwitchBack.onForeground("com.vladutu.copilot")
