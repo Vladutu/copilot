@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,11 @@ fun ConnectionStatus(state: UiState, onClick: () -> Unit, modifier: Modifier = M
 
     Row(
         modifier = modifier
+            // Tap-only chrome: never a knob stop. Without this, the very first DPAD
+            // event after launch (device still in touch mode, so nothing holds focus
+            // yet) does its initial focus placement on the topmost-leftmost focusable —
+            // this pill — instead of the Waze tile.
+            .focusProperties { canFocus = false }
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,

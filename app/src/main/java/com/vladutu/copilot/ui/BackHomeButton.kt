@@ -8,18 +8,21 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 
 // 64dp tap area (was 48dp) — easier to hit on a moving car screen. The icon
 // itself stays 28dp; the extra space is invisible padding around it. IconButton
-// has no background or border by default, so the area is touch-only chrome.
+// has no background or border by default, so the area is touch-only chrome —
+// canFocus false keeps it that way: knob BACK pops the route instead, and the
+// first DPAD event after a touch must place focus on a tile, not up here.
 @Composable
 fun BackHomeButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(
         onClick = onBack,
-        modifier = modifier.size(64.dp),
+        modifier = modifier.focusProperties { canFocus = false }.size(64.dp),
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
