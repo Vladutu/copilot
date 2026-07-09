@@ -1,5 +1,6 @@
 package com.vladutu.copilot.ui
 
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,12 +94,20 @@ fun <T> KnobPagedGrid(
 
     // A finger swipe moves the pager without going through the knob, so mirror the
     // settled page back into our state — otherwise the dots, range and focus stay on
-    // the old page. Knob-driven changes settle on a page we've already set, so this is
-    // a no-op for them.
+    // the old page. ONLY for real drags though: a knob-driven settle can also disagree
+    // with pos.page — a fast right+left twist at a page edge lets the abandoned scroll
+    // cross the finish line before its cancel lands — and mirroring that would overwrite
+    // the second twist, dumping focus on the wrong page's last stop. So a drag arms the
+    // mirror, the settle consumes it, and knob input disarms it (the knob is authoritative
+    // the moment it speaks).
+    val dragged by pagerState.interactionSource.collectIsDraggedAsState()
+    var dragPending by remember { mutableStateOf(false) }
+    LaunchedEffect(dragged) { if (dragged) dragPending = true }
     LaunchedEffect(pagerState.settledPage) {
-        if (pagerState.settledPage != pos.page) {
+        if (dragPending && pagerState.settledPage != pos.page) {
             pos = nav.clamp(pos.copy(page = pagerState.settledPage))
         }
+        dragPending = false
     }
 
     // Focus follows our stop, but only once the pager has actually settled on our page:
@@ -122,8 +131,8 @@ fun <T> KnobPagedGrid(
     val keyHandler = Modifier.onPreviewKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         when (event.key) {
-            Key.DirectionRight -> { pos = nav.next(nav.clamp(pos)); true }
-            Key.DirectionLeft -> { pos = nav.prev(nav.clamp(pos)); true }
+            Key.DirectionRight -> { dragPending = false; pos = nav.next(nav.clamp(pos)); true }
+            Key.DirectionLeft -> { dragPending = false; pos = nav.prev(nav.clamp(pos)); true }
             else -> false
         }
     }
