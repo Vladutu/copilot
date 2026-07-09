@@ -24,9 +24,24 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.ui.lists.DotStrip
 import com.vladutu.copilot.ui.lists.PageIndicator
+import com.vladutu.copilot.ui.theme.LocalPageSizes
+
+/**
+ * One caller-owned extra knob stop after the last tile of the last page — Home's Like
+ * heart, which renders inside the [KnobPagedGrid.bottom] slot (the now-playing strip),
+ * not as a tile. The dot strip shows it as the trailing heart (see [DotStrip]).
+ *
+ * Data class on purpose: callers construct it inline on every recomposition, and it
+ * keys the grid's focus effect — value equality keeps that effect from relaunching.
+ */
+data class TrailingStop(
+    val focusRequester: FocusRequester,
+    val heartFilled: Boolean,
+)
 
 /**
  * Shared paged tile rail driven by the BMW knob. Extracted from SavedListScreen so
@@ -52,8 +67,15 @@ import com.vladutu.copilot.ui.lists.PageIndicator
  * Bottom dot strip: a list that fits on a single page gets one dot per item with the
  * pill tracking the focused item (same feel as Home); anything longer gets one dot
  * per page, the pill moving on page flips. [perItemDots] forces the per-item strip
- * even across pages — for fixed menus (Music) that stay small enough to dot each entry,
- * as opposed to unbounded saved lists.
+ * even across pages — for fixed menus (Home, Music) that stay small enough to dot each
+ * entry, as opposed to unbounded saved lists.
+ *
+ * [trailingStop] adds one caller-owned stop after the last tile (Home's heart); its dot
+ * renders as the trailing heart. [bottom] renders below the dots but INSIDE the grid's
+ * key-handler scope — required for any content hosting the trailing stop's focus target,
+ * otherwise a twist while it is focused would fall through to Compose's default focus
+ * search instead of [KnobGridNav]. [horizontalPadding] insets the tile row (Home passes
+ * 0 to stay flush inside its own screen padding).
  */
 @Composable
 fun <T> KnobPagedGrid(
@@ -61,13 +83,16 @@ fun <T> KnobPagedGrid(
     resetKey: Any?,
     modifier: Modifier = Modifier,
     stopsPerItem: Int = 1,
-    pageSize: Int = 5,
+    pageSize: Int = LocalPageSizes.current.listTiles,
     perItemDots: Boolean = false,
+    trailingStop: TrailingStop? = null,
+    horizontalPadding: Dp = 32.dp,
+    bottom: (@Composable () -> Unit)? = null,
     onRangeChange: ((String) -> Unit)? = null,
     tile: @Composable (item: T, focusRequesters: List<FocusRequester>?) -> Unit,
 ) {
-    val nav = remember(items.size, pageSize, stopsPerItem) {
-        KnobGridNav(items.size, pageSize, stopsPerItem)
+    val nav = remember(items.size, pageSize, stopsPerItem, trailingStop != null) {
+        KnobGridNav(items.size, pageSize, stopsPerItem, hasTrailingStop = trailingStop != null)
     }
     val pagerState = rememberPagerState(pageCount = { nav.pageCount })
     val tileFocus = remember(pageSize, stopsPerItem) { List(pageSize * stopsPerItem) { FocusRequester() } }
@@ -83,8 +108,9 @@ fun <T> KnobPagedGrid(
     // resetKey change (top item changed / new list) → land back on page 0, stop 0.
     LaunchedEffect(resetKey) { pos = KnobPos(0, 0) }
 
-    // Items shrank (deletion) → repair a now-stale position onto a valid stop.
-    LaunchedEffect(items) { pos = nav.clamp(pos) }
+    // Nav inputs changed (deletion, page-size setting, trailing stop gone with the
+    // song) → repair a now-stale position onto a valid stop.
+    LaunchedEffect(nav) { pos = nav.clamp(pos) }
 
     // Drive the pager from our page. Relaunching on a page change cancels any in-flight
     // scroll, so a rapid burst of twists just animates to the latest target page once.
@@ -113,9 +139,14 @@ fun <T> KnobPagedGrid(
     // Focus follows our stop, but only once the pager has actually settled on our page:
     // requesters are attached only to the settled page's tiles (see below), so requesting
     // while a scroll is still animating would target the old page and drag focus backward.
-    LaunchedEffect(pos, pagerState.settledPage) {
+    // getOrNull: a stale trailing-stop position can exceed the tile requesters for one
+    // frame until the clamp effect above runs — skip rather than crash.
+    LaunchedEffect(pos, pagerState.settledPage, trailingStop) {
         if (items.isNotEmpty() && pagerState.settledPage == pos.page) {
-            runCatching { tileFocus[pos.stop].requestFocus() }
+            val target =
+                if (nav.isTrailingStop(pos)) trailingStop?.focusRequester
+                else tileFocus.getOrNull(pos.stop)
+            target?.let { runCatching { it.requestFocus() } }
         }
     }
 
@@ -137,16 +168,18 @@ fun <T> KnobPagedGrid(
         }
     }
 
-    Column(modifier = modifier) {
+    // Key handling sits on the root Column, not the pager, so the [bottom] slot (and
+    // the trailing stop focused inside it) stays within the interception scope.
+    Column(modifier = modifier.then(keyHandler)) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f).fillMaxWidth().then(keyHandler),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         ) { page ->
             val start = page * pageSize
             val pageItems = items.subList(start, minOf(start + pageSize, items.size))
             // One horizontal rail of pageSize tiles, weighted so they share the row.
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 for (i in 0 until pageSize) {
@@ -165,16 +198,22 @@ fun <T> KnobPagedGrid(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (items.size >= 2 && (perItemDots || items.size <= pageSize)) {
+            val dotCount = items.size + if (trailingStop != null) 1 else 0
+            if (dotCount >= 2 && (perItemDots || items.size <= pageSize)) {
                 // Focus moving between two stops of the same item (Discover's name + play
-                // zones) keeps the pill on that item's dot.
+                // zones) keeps the pill on that item's dot. The trailing stop owns the
+                // last dot, drawn as the heart.
                 DotStrip(
-                    count = items.size,
-                    current = nav.itemIndexOf(pos.page, pos.stop).coerceAtMost(items.size - 1),
+                    count = dotCount,
+                    current = if (nav.isTrailingStop(pos)) items.size
+                    else nav.itemIndexOf(pos.page, pos.stop).coerceAtMost(items.size - 1),
+                    heartAtLast = trailingStop != null,
+                    heartFilled = trailingStop?.heartFilled ?: false,
                 )
             } else {
                 PageIndicator(pageCount = nav.pageCount, currentPage = pos.page)
             }
         }
+        bottom?.invoke()
     }
 }

@@ -22,11 +22,7 @@ import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
-
-// Playlists + Songs + Time Machine + Discover + Radio + Liked. Six tiles were too
-// cramped on one 1440px row, so the fixed menu now pages 4-at-a-time through the
-// shared knob rail (redesign-spec §3c) — same knob/dot behavior as every list screen.
-private const val MUSIC_PAGE_SIZE = 4
+import com.vladutu.copilot.ui.theme.LocalPageSizes
 
 private data class MusicTile(
     val labelRes: Int,
@@ -72,10 +68,12 @@ fun MusicScreen(
         ScreenHeader(title = stringResource(R.string.home_music), onBack = onBack)
 
         // resetKey is a constant: the menu never changes, so the knob just stays put.
+        // Six tiles were too cramped on one 1440px row (redesign-spec §3c), so the
+        // fixed menu pages at the user's menu size — 4-at-a-time out of the box.
         KnobPagedGrid(
             items = tiles,
             resetKey = "music",
-            pageSize = MUSIC_PAGE_SIZE,
+            pageSize = LocalPageSizes.current.menuTiles,
             // Fixed 6-entry menu: dot every entry so the pill tracks the knob like Home,
             // instead of the per-page dots unbounded lists get.
             perItemDots = true,

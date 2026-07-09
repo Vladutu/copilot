@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,11 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -56,14 +51,25 @@ import com.vladutu.copilot.R
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.service.UiState
+import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MTricolor
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
-import com.vladutu.copilot.ui.lists.DotStrip
+import com.vladutu.copilot.ui.TrailingStop
+import com.vladutu.copilot.ui.theme.LocalPageSizes
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
+
+/** One of the four fixed Home entries, in knob reading order. */
+private data class HomeTile(
+    val labelRes: Int,
+    val onClick: () -> Unit,
+    val packageName: String? = null,
+    val fallbackIcon: ImageVector? = null,
+    val fallbackRes: Int? = null,
+)
 
 @Composable
 fun HomeScreen(
@@ -83,107 +89,66 @@ fun HomeScreen(
     BackHandler(onBack = onBackFromHome)
 
     val songPlaying = nowPlaying != null
-    val tileCount = HomeKnob.tileCount(songPlaying)
-    // Four fixed tiles + (optional) heart as the last stop.
-    val tileFocus = remember { List(HomeKnob.BASE_TILES) { FocusRequester() } }
     val heartFocus = remember { FocusRequester() }
-    var focusedIndex by remember { mutableIntStateOf(0) }
 
-    // If the song stops while the heart was focused, clamp back onto the last tile.
-    LaunchedEffect(tileCount) {
-        focusedIndex = HomeKnob.clampFocus(focusedIndex, tileCount)
-    }
-    LaunchedEffect(focusedIndex, tileCount) {
-        val target = if (focusedIndex < HomeKnob.BASE_TILES) tileFocus[focusedIndex] else heartFocus
-        runCatching { target.requestFocus() }
-    }
+    // Four fixed tiles: Waze, Maps, Places, Music. The Like heart is the trailing knob
+    // stop while a song plays — LAST overall, so default focus (Waze) never lands on it
+    // and a left twist from Waze never reaches it.
+    val tiles = listOf(
+        HomeTile(R.string.home_waze, onOpenWaze, packageName = AppLauncher.WAZE_PKG, fallbackRes = R.drawable.ic_map_pin),
+        HomeTile(R.string.home_maps, onOpenMaps, packageName = AppLauncher.MAPS_PKG, fallbackRes = R.drawable.ic_map_pin),
+        HomeTile(R.string.home_destinations, onOpenDestinations, fallbackIcon = Icons.Filled.Place),
+        HomeTile(R.string.home_music, onOpenMusic, fallbackIcon = Icons.Filled.LibraryMusic),
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             // bottom = 0: the now-playing strip is always the last child and sits flush
             // against the screen edge.
-            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 0.dp)
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (event.key) {
-                    Key.DirectionRight -> {
-                        if (focusedIndex < tileCount - 1) focusedIndex++
-                        true
-                    }
-                    Key.DirectionLeft -> {
-                        if (focusedIndex > 0) focusedIndex--
-                        true
-                    }
-                    else -> false
-                }
-            },
+            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TopBar(state = state, onOpenStatus = onOpenStatus, onOpenSettings = onOpenSettings)
 
-        // Rail — single row of the 4 fixed tiles (redesign-spec §3a).
-        Row(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            MediaRowTile(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                focusRequester = tileFocus[0],
-                label = stringResource(R.string.home_waze),
-                onClick = onOpenWaze,
-                packageName = AppLauncher.WAZE_PKG,
-                fallbackRes = R.drawable.ic_map_pin,
-                maxLines = 1,
-            )
-            MediaRowTile(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                focusRequester = tileFocus[1],
-                label = stringResource(R.string.home_maps),
-                onClick = onOpenMaps,
-                packageName = AppLauncher.MAPS_PKG,
-                fallbackRes = R.drawable.ic_map_pin,
-                maxLines = 1,
-            )
-            MediaRowTile(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                focusRequester = tileFocus[2],
-                label = stringResource(R.string.home_destinations),
-                onClick = onOpenDestinations,
-                fallbackIcon = Icons.Filled.Place,
-                maxLines = 1,
-            )
-            MediaRowTile(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                focusRequester = tileFocus[3],
-                label = stringResource(R.string.home_music),
-                onClick = onOpenMusic,
-                fallbackIcon = Icons.Filled.LibraryMusic,
-                maxLines = 1,
-            )
-        }
-
-        // Dot strip: 4 tile stops + heart as the last stop while a song plays.
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            DotStrip(
-                count = tileCount,
-                current = focusedIndex,
-                heartAtLast = songPlaying,
-                heartFilled = isLiked,
-            )
-        }
-
-        // Persistent now-playing strip (shared across all screens). The Like heart is
-        // Home-only and appears as the last knob stop while a song plays; Home keeps
-        // ownership of its focus, so the strip's likeControl slot just renders it.
-        NowPlayingStrip(
-            nowPlaying = nowPlaying,
-            likeControl = if (songPlaying) {
-                { LikeHeart(isLiked = isLiked, likedCount = likedCount, heartFocus = heartFocus, onLike = onLike) }
-            } else {
-                null
+        // Rail (redesign-spec §3a) on the shared knob grid, paged at the menu size.
+        // The now-playing strip rides in the grid's bottom slot so the heart — Home-only,
+        // rendered by the strip's likeControl, focused as the grid's trailing stop —
+        // stays inside the grid's knob key-handler scope. Home keeps ownership of the
+        // heart's FocusRequester.
+        KnobPagedGrid(
+            items = tiles,
+            resetKey = "home",
+            pageSize = LocalPageSizes.current.menuTiles,
+            perItemDots = true,
+            trailingStop = if (songPlaying) TrailingStop(heartFocus, heartFilled = isLiked) else null,
+            // Flush inside the screen's own 24dp padding, as before the grid.
+            horizontalPadding = 0.dp,
+            modifier = Modifier.weight(1f),
+            bottom = {
+                Box(modifier = Modifier.padding(top = 12.dp)) {
+                    NowPlayingStrip(
+                        nowPlaying = nowPlaying,
+                        likeControl = if (songPlaying) {
+                            { LikeHeart(isLiked = isLiked, likedCount = likedCount, heartFocus = heartFocus, onLike = onLike) }
+                        } else {
+                            null
+                        },
+                    )
+                }
             },
-        )
+        ) { tile, requesters ->
+            MediaRowTile(
+                modifier = Modifier.fillMaxSize(),
+                focusRequester = requesters?.get(0),
+                label = stringResource(tile.labelRes),
+                onClick = tile.onClick,
+                packageName = tile.packageName,
+                fallbackIcon = tile.fallbackIcon,
+                fallbackRes = tile.fallbackRes,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -233,7 +198,7 @@ private fun TopBar(
 }
 
 /**
- * Home-only Like control that slots into the now-playing strip: the last knob stop
+ * Home-only Like control that slots into the now-playing strip: the trailing knob stop
  * while a song plays — amber ring + liked-count pill badge. Home owns [heartFocus].
  */
 @Composable

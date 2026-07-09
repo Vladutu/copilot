@@ -76,6 +76,21 @@ class SettingsStoreTest {
         assertEquals(true, store.tileFocusFillFlow.first())
     }
 
+    @Test fun `page sizes default to the shipped values`() = runTest {
+        assertEquals(4, store.menuPageSizeFlow.first())
+        assertEquals(5, store.listPageSizeFlow.first())
+    }
+
+    @Test fun `setMenuPageSize round-trips`() = runTest {
+        store.setMenuPageSize(3)
+        assertEquals(3, store.menuPageSizeFlow.first())
+    }
+
+    @Test fun `setListPageSize round-trips`() = runTest {
+        store.setListPageSize(6)
+        assertEquals(6, store.listPageSizeFlow.first())
+    }
+
     @Test fun `topicFlow is null before any topic exists`() = runTest {
         assertNull(store.topicFlow.first())
     }

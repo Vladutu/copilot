@@ -7,11 +7,17 @@ data class KnobPos(val page: Int, val stop: Int)
  * Pure stop/page arithmetic for [KnobPagedGrid]. Stops walk items in reading order;
  * an item can expose several stops (e.g. Discover's name + play zones), all of an
  * item's stops coming before the next item's.
+ *
+ * [hasTrailingStop] appends one caller-owned stop after the last item's stops, on the
+ * last page only (Home's Like heart). Because [next]/[prev]/[clamp] all derive from
+ * [stopsOnPage], the trailing stop rides along: it is only reachable past the last
+ * tile, and a left twist from it lands back on that tile.
  */
 class KnobGridNav(
     private val itemCount: Int,
     private val pageSize: Int,
     private val stopsPerItem: Int,
+    private val hasTrailingStop: Boolean = false,
 ) {
     val pageCount: Int = if (itemCount == 0) 0 else (itemCount + pageSize - 1) / pageSize
 
@@ -20,7 +26,14 @@ class KnobGridNav(
         return minOf(pageSize, itemCount - page * pageSize)
     }
 
-    fun stopsOnPage(page: Int): Int = itemsOnPage(page) * stopsPerItem
+    fun stopsOnPage(page: Int): Int =
+        itemsOnPage(page) * stopsPerItem +
+            (if (hasTrailingStop && pageCount > 0 && page == pageCount - 1) 1 else 0)
+
+    /** True when [pos] sits on the trailing stop rather than on an item. */
+    fun isTrailingStop(pos: KnobPos): Boolean =
+        hasTrailingStop && pageCount > 0 && pos.page == pageCount - 1 &&
+            pos.stop == itemsOnPage(pos.page) * stopsPerItem
 
     /** Right twist: next stop; at the page's last stop move to the next page's first; clamp at the end. */
     fun next(pos: KnobPos): KnobPos = when {

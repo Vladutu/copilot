@@ -5,9 +5,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.theme.DefaultTheme
+import com.vladutu.copilot.ui.theme.PageSizeDefaults
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import com.vladutu.copilot.waze.WazeGoDefaults
 import kotlinx.coroutines.flow.Flow
@@ -85,6 +87,24 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_TILE_FOCUS_FILL] = enabled }
     }
 
+    /** Tiles per page on the fixed menu rails (Home, Music). */
+    val menuPageSizeFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_MENU_PAGE_SIZE] ?: PageSizeDefaults.MENU_TILES
+    }
+
+    suspend fun setMenuPageSize(tiles: Int) {
+        dataStore.edit { prefs -> prefs[KEY_MENU_PAGE_SIZE] = tiles }
+    }
+
+    /** Tiles per page on the list rails (saved lists, Discover, browse results). */
+    val listPageSizeFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[KEY_LIST_PAGE_SIZE] ?: PageSizeDefaults.LIST_TILES
+    }
+
+    suspend fun setListPageSize(tiles: Int) {
+        dataStore.edit { prefs -> prefs[KEY_LIST_PAGE_SIZE] = tiles }
+    }
+
     /** Whether a knob press taps Waze's "Go now". Defaults on. */
     val wazeGoEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_WAZE_GO_ENABLED] ?: true
@@ -135,6 +155,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_TILE_FONT_SIZE = floatPreferencesKey("tile_font_size_sp")
         val KEY_TILE_BORDER_WIDTH = floatPreferencesKey("tile_border_width_dp")
         val KEY_TILE_FOCUS_FILL = booleanPreferencesKey("tile_focus_fill")
+        val KEY_MENU_PAGE_SIZE = intPreferencesKey("menu_page_size")
+        val KEY_LIST_PAGE_SIZE = intPreferencesKey("list_page_size")
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
     }

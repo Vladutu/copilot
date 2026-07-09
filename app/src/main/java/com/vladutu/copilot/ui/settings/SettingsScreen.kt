@@ -60,6 +60,7 @@ import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
 import com.vladutu.copilot.ui.theme.AllThemes
+import com.vladutu.copilot.ui.theme.PageSizeDefaults
 import com.vladutu.copilot.ui.theme.PilotOk
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import com.vladutu.copilot.ui.theme.themeById
@@ -87,6 +88,10 @@ fun SettingsScreen(
     onTileBorderWidthChange: (Float) -> Unit,
     tileFocusFill: Boolean,
     onTileFocusFillChange: (Boolean) -> Unit,
+    menuPageSize: Int,
+    onMenuPageSizeChange: (Int) -> Unit,
+    listPageSize: Int,
+    onListPageSizeChange: (Int) -> Unit,
     wazeGoEnabled: Boolean,
     onWazeGoEnabledChange: (Boolean) -> Unit,
     wazeGoLabel: String,
@@ -192,6 +197,20 @@ fun SettingsScreen(
                 value = tileBorderWidth,
                 valueRange = TileAppearanceDefaults.BORDER_WIDTH_MIN..TileAppearanceDefaults.BORDER_WIDTH_MAX,
                 onValueChange = onTileBorderWidthChange,
+            )
+            // Tiles per page: menus are the fixed rails (Home, Music); lists page
+            // whatever the data brings (saved lists, Discover, browse results).
+            SliderRow(
+                label = stringResource(R.string.settings_menu_page_size),
+                value = menuPageSize.toFloat(),
+                valueRange = PageSizeDefaults.MIN..PageSizeDefaults.MAX,
+                onValueChange = { onMenuPageSizeChange(it.roundToInt()) },
+            )
+            SliderRow(
+                label = stringResource(R.string.settings_list_page_size),
+                value = listPageSize.toFloat(),
+                valueRange = PageSizeDefaults.MIN..PageSizeDefaults.MAX,
+                onValueChange = { onListPageSizeChange(it.roundToInt()) },
             )
             SwitchRow(
                 label = stringResource(R.string.settings_tile_focus_fill),

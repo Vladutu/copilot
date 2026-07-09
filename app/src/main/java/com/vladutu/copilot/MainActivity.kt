@@ -51,8 +51,11 @@ import com.vladutu.copilot.ui.status.StatusScreen
 import com.vladutu.copilot.ui.TricolorSweep
 import com.vladutu.copilot.ui.theme.CopilotDriveTheme
 import com.vladutu.copilot.ui.theme.DefaultTheme
+import com.vladutu.copilot.ui.theme.LocalPageSizes
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import com.vladutu.copilot.ui.theme.PageSizeDefaults
+import com.vladutu.copilot.ui.theme.PageSizes
 import com.vladutu.copilot.ui.theme.themeById
 import com.vladutu.copilot.ui.theme.TileAppearance
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
@@ -159,6 +162,13 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
     val tileFocusFill by app.locator.settingsStore.tileFocusFillFlow
         .collectAsStateWithLifecycle(initialValue = TileAppearanceDefaults.FOCUS_FILL)
 
+    // Tiles-per-page for the knob rails, same pattern: provided once, read by
+    // KnobPagedGrid (list default) and the menu screens (Home, Music).
+    val menuPageSize by app.locator.settingsStore.menuPageSizeFlow
+        .collectAsStateWithLifecycle(initialValue = PageSizeDefaults.MENU_TILES)
+    val listPageSize by app.locator.settingsStore.listPageSizeFlow
+        .collectAsStateWithLifecycle(initialValue = PageSizeDefaults.LIST_TILES)
+
     // A successful launch sends Copilot to the back, so a failure leaves this UI
     // in front — surface the reason as a toast instead of swallowing it silently.
     fun launchOrReport(result: AppLauncher.Result, onOk: () -> Unit) {
@@ -171,6 +181,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
 
     CompositionLocalProvider(
         LocalTileAppearance provides TileAppearance(tileFontSize.sp, tileBorderWidth.dp, tileFocusFill),
+        LocalPageSizes provides PageSizes(menuTiles = menuPageSize, listTiles = listPageSize),
     ) {
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
@@ -362,6 +373,14 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 tileFocusFill = tileFocusFill,
                 onTileFocusFillChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setTileFocusFill(enabled) }
+                },
+                menuPageSize = menuPageSize,
+                onMenuPageSizeChange = { tiles ->
+                    app.applicationScope.launch { app.locator.settingsStore.setMenuPageSize(tiles) }
+                },
+                listPageSize = listPageSize,
+                onListPageSizeChange = { tiles ->
+                    app.applicationScope.launch { app.locator.settingsStore.setListPageSize(tiles) }
                 },
                 wazeGoEnabled = wazeGoEnabled,
                 onWazeGoEnabledChange = { enabled ->

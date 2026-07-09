@@ -60,6 +60,8 @@
     <string name="settings_tile_font_size">Tile text size</string>
     <string name="settings_tile_border_width">Highlighted tile border</string>
     <string name="settings_tile_focus_fill">Fill highlighted tile</string>
+    <string name="settings_menu_page_size">Menu tiles per page</string>
+    <string name="settings_list_page_size">List tiles per page</string>
     <string name="settings_waze_label">Waze</string>
     <string name="settings_waze_go_toggle">Tap “Go now” with the knob</string>
     <string name="settings_waze_go_button_label">Button label</string>
