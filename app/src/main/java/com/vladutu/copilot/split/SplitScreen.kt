@@ -45,10 +45,11 @@ object SplitScreen {
     @Volatile private var visiblePackages: Set<String> = emptySet()
     @Volatile private var focusedPackage: String? = null
 
-    /** Last nav app seen in the foreground — the partner a from-Copilot music launch
-     *  brings up first. Never expires: "the nav app from earlier this drive" is exactly
+    /** Last nav / music app seen in the foreground — the partner the opposite-side launch
+     *  pairs with. Never expire: "the nav (or music) app from earlier this drive" is exactly
      *  the pairing the driver means. */
     @Volatile private var lastNavApp: String? = null
+    @Volatile private var lastMusicApp: String? = null
 
     /** Publish the currently visible app windows and which of them holds focus
      *  (called from the accessibility service on every window change). */
@@ -60,6 +61,7 @@ object SplitScreen {
     /** Record a foreground change (called from the accessibility service, restorable-filtered). */
     fun onForeground(pkg: String) {
         if (pkg in NAV_PKGS) lastNavApp = pkg
+        if (pkg in PAIRS_WITH_NAV) lastMusicApp = pkg
     }
 
     /** Whether [pkg] currently has a window on screen (fullscreen or split pane). */
@@ -91,22 +93,27 @@ object SplitScreen {
     }
 
     /**
-     * The nav app to bring to front before launching [targetPkg] adjacent (the two-step
-     * split build from inside Copilot), or null when a plain/single launch is right:
-     * toggle off, target isn't a music-side app, a partner pane is already visible
-     * (single adjacent launch suffices), or no nav app has been seen yet.
+     * The opposite-side app to get on screen before launching [targetPkg] (the paired
+     * launch from inside Copilot): music targets pair with the last nav app, nav targets
+     * (a saved destination while a song plays) with the last music app. Null when a
+     * plain/single launch is right: toggle off, a partner pane is already visible
+     * (single adjacent launch suffices), or no opposite-side app has been seen yet.
      */
     fun pairingPartnerFor(targetPkg: String): String? {
         if (!enabled) return null
-        if (targetPkg !in PAIRS_WITH_NAV) return null
         if (hasVisiblePartner(targetPkg)) return null
-        return lastNavApp
+        return when (targetPkg) {
+            in PAIRS_WITH_NAV -> lastNavApp
+            in NAV_PKGS -> lastMusicApp
+            else -> null
+        }
     }
 
     /** One-line policy-state dump for the diagnostic log, so a wrong launch shape is
      *  attributable on the box: toggle off vs no nav seen vs stale window snapshot. */
     fun stateForDiagnostics(): String =
-        "enabled=$enabled visible=$visiblePackages focused=$focusedPackage lastNav=$lastNavApp"
+        "enabled=$enabled visible=$visiblePackages focused=$focusedPackage " +
+            "lastNav=$lastNavApp lastMusic=$lastMusicApp"
 
     /** Back to boot state (tests only — production state is fed by the collaborators above). */
     fun reset() {
@@ -114,5 +121,6 @@ object SplitScreen {
         visiblePackages = emptySet()
         focusedPackage = null
         lastNavApp = null
+        lastMusicApp = null
     }
 }

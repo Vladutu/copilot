@@ -72,7 +72,13 @@ class SplitScreenTest {
         assertNull(SplitScreen.pairingPartnerFor(YTM))
     }
 
-    @Test fun `no pairing for nav targets - only music pairs against nav`() {
+    @Test fun `nav target pairs with the last music app (destination while a song plays)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YTM)
+        assertEquals(YTM, SplitScreen.pairingPartnerFor(WAZE))
+    }
+
+    @Test fun `nav target without a music sighting does not pair`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(WAZE)
         assertNull(SplitScreen.pairingPartnerFor(MAPS))

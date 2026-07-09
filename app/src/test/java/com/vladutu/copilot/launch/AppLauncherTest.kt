@@ -219,6 +219,28 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
     }
 
+    @Test fun `destination from copilot steps aside and rejoins the split via its own pane`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
+        SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
+        var steppedAside = 0
+        CopilotForeground.stepAside = { steppedAside++ }
+
+        val res = launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        assertEquals(1, steppedAside)
+
+        // Split resurfaces with the music pane focused → waze goes adjacent (= its own pane).
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
+            focused = AppLauncher.YT_MUSIC_PKG,
+        )
+        PairedLaunch.matchPartnerShown(AppLauncher.YT_MUSIC_PKG)!!.invoke()
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.WAZE_PKG, intent.`package`)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+    }
+
     @Test fun `paired launch falls back to a direct launch when the nav partner is unresolvable`() {
         // Two-step conditions met (music from Copilot, Waze seen earlier) but Robolectric
         // can't resolve a Waze launch intent — the deep link must still fire, fullscreen.

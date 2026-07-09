@@ -103,8 +103,9 @@ class AppLauncher(
 
     /**
      * Start [intent] under the split policy. Shapes:
-     *  - paired launch (from-Copilot music launch, [SplitScreen.pairingPartnerFor]): get the
-     *    nav partner on screen, then fire the deep link once the accessibility service
+     *  - paired launch (from-Copilot launch, [SplitScreen.pairingPartnerFor] — music pairs
+     *    with the last nav app, nav with the last music app): get the partner on screen,
+     *    then fire the deep link once the accessibility service
      *    confirms it's visible. When Copilot is the foreground activity it steps aside first
      *    (moveTaskToBack): a split covered by Copilot resurfaces intact, whereas relaunching
      *    one of its members with startActivity rips it out and dissolves the pair
