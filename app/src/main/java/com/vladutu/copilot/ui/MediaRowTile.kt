@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -176,6 +177,13 @@ fun MediaRowTile(
                 ) {
                     Text(
                         text = label,
+                        // Measured unbounded so the slot's fixed height can never eat a
+                        // line: a height-bounded Text ellipsizes at the last FULLY
+                        // fitting line, and fonts taller than the 38/32 line-height
+                        // ratio (BMW's Saira) left long labels on one line. Unbounded,
+                        // maxLines alone decides; any overshoot bleeds a few px into
+                        // the spacing below the slot instead of dropping the line.
+                        modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontSize = appearance.fontSize,
                             lineHeight = appearance.lineHeight,
