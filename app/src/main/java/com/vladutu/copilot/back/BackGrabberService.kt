@@ -18,6 +18,7 @@ import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
 import com.vladutu.copilot.waze.GoNodeMatcher
 import com.vladutu.copilot.waze.GoTapDecider
@@ -51,6 +52,10 @@ class BackGrabberService : AccessibilityService() {
 
     /** Guards against scheduling multiple settle-timers from repeated music-app window events. */
     private var switchBackPending = false
+
+    /** Guards against stacking repair settle-timers from the window-event burst while
+     *  navigation starts. */
+    private var repairCheckPending = false
 
     /** Live mirror of the Waze Go-now settings, kept current by collectors started in
      *  onServiceConnected. Read synchronously from onKeyEvent (which is not a coroutine). */
@@ -98,6 +103,7 @@ class BackGrabberService : AccessibilityService() {
         // policy's window snapshot current before any launch decision reads it.
         updateWindowSnapshot()
         maybeFirePairedLaunch()
+        maybeRepairSplit()
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
 
@@ -135,6 +141,51 @@ class BackGrabberService : AccessibilityService() {
     }
 
     /**
+     * Post-destination split rebuild ([SplitRepair], armed by AppLauncher when a destination
+     * was delivered): once the nav app has held the screen alone for NAV_STABLE_MS, toggle
+     * split mode around it and pull the music app into the other pane. The stability wait
+     * plus the Waze confirm-screen guard aim the rebuild *after* the nav-start task
+     * recreation that collapses any earlier split; if an attempt still lands too early and
+     * gets collapsed, the recreation's own window events re-enter this path and the next
+     * attempt converges. Skipped rounds don't reschedule themselves — the next window event
+     * (there is always one when navigation starts and the task is recreated) re-evaluates.
+     */
+    private fun maybeRepairSplit() {
+        val nav = SplitRepair.pendingNav() ?: return
+        if (!SplitScreen.isSoleForeground(nav)) return
+        if (repairCheckPending) return
+        repairCheckPending = true
+        DiagnosticLog.i(TAG, "repair: $nav alone — re-split check in ${SplitRepair.NAV_STABLE_MS}ms")
+        handler.postDelayed({ fireRepairCheck(nav) }, SplitRepair.NAV_STABLE_MS)
+    }
+
+    private fun fireRepairCheck(nav: String) {
+        repairCheckPending = false
+        if (SplitRepair.pendingNav() != nav) return
+        if (!SplitScreen.isSoleForeground(nav)) {
+            DiagnosticLog.i(TAG, "repair check: $nav no longer alone — waiting")
+            return
+        }
+        // Splitting while Waze still shows its "Go now" confirm is wasted: the task
+        // recreation at navigation start would collapse the fresh split (and steal focus
+        // from Waze, breaking the knob confirm tap). Wait for the confirm to clear; the
+        // retry budget covers a label mismatch making this guard miss.
+        if (nav == SplitScreen.WAZE_PKG && wazeConfirmOnScreen()) {
+            DiagnosticLog.i(TAG, "repair check: Waze still on the confirm screen — waiting for navigation start")
+            return
+        }
+        SplitRepair.takeAttempt()?.let { fire ->
+            DiagnosticLog.i(TAG, "repair: rebuilding split around $nav (${SplitRepair.attemptsForDiagnostics()})")
+            enterSplitThenFire(fire, fireOnToggleFailure = false)
+        }
+    }
+
+    private fun wazeConfirmOnScreen(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return findGoNode(root, wazeGoLabel.ifBlank { WazeGoDefaults.LABEL }) != null
+    }
+
+    /**
      * Third stage of the two-step split build. LAUNCH_ADJACENT can only place an app into an
      * *existing* split — a background caller can't create one with the flag alone (emulator:
      * the deep link just opened fullscreen over the partner). So: enter split mode via the
@@ -142,16 +193,22 @@ class BackGrabberService : AccessibilityService() {
      * a pane), give the system a beat to engage, then fire the adjacent deep link into the
      * other pane. If the split is somehow already live, toggling would tear it down — skip
      * straight to the deep link. When the toggle is unsupported (dispatch returns false) the
-     * deep link still fires and lands fullscreen, which is the same fallback the TTL gives.
+     * launch fires and lands fullscreen only when [fireOnToggleFailure]: right for a song
+     * (it must play regardless), wrong for a split repair (a fullscreen music launch would
+     * cover the navigation the driver just asked for).
      */
-    private fun enterSplitThenFire(fire: () -> Unit) {
+    private fun enterSplitThenFire(fire: () -> Unit, fireOnToggleFailure: Boolean = true) {
         if (SplitScreen.isSplitActive()) {
             DiagnosticLog.i(TAG, "split already active — firing deep link directly")
             fire()
             return
         }
         val dispatched = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
-        DiagnosticLog.i(TAG, "toggle split dispatched=$dispatched — deep link in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
+        DiagnosticLog.i(TAG, "toggle split dispatched=$dispatched — firing in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
+        if (!dispatched && !fireOnToggleFailure) {
+            DiagnosticLog.w(TAG, "toggle unsupported — skipping repair launch (won't cover navigation)")
+            return
+        }
         handler.postDelayed(fire, PairedLaunch.SPLIT_ENGAGE_MS)
     }
 

@@ -9,6 +9,7 @@ import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
 import com.vladutu.copilot.split.CopilotForeground
 import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
 import android.content.Intent
 import org.junit.Assert.assertEquals
@@ -43,6 +44,7 @@ class AppLauncherTest {
         SplitScreen.reset()
         SplitScreen.ownPackage = context.packageName
         PairedLaunch.clear()
+        SplitRepair.clear()
         CopilotForeground.stepAside = null
     }
 
@@ -183,8 +185,8 @@ class AppLauncherTest {
     }
 
     @Test fun `split toggle on - command for the focused pane's app stays non-adjacent`() {
-        // Relaunching the focused pane's app adjacent duplicates it into the other half
-        // (the double-Waze); the policy must strip the flag in that case.
+        // Nav destinations are always delivered plain (Waze exits splits on deep links);
+        // this also keeps the old double-Waze guarantee for the focused pane's app.
         SplitScreen.enabled = true
         SplitScreen.onWindows(
             visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
@@ -219,7 +221,7 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
     }
 
-    @Test fun `destination from copilot ends on plain nav delivery (waze exits splits on deep links)`() {
+    @Test fun `destination fires plain immediately and arms the split repair`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
         SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
@@ -228,18 +230,36 @@ class AppLauncherTest {
 
         val res = launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
         assertTrue(res is AppLauncher.Result.Ok)
-        assertEquals(1, steppedAside)
-
-        // Split resurfaces — but nav deep links collapse splits from inside Waze, so the
-        // policy delivers plain: the driver ends on fullscreen navigation, not fullscreen music.
-        SplitScreen.onWindows(
-            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
-            focused = AppLauncher.YT_MUSIC_PKG,
-        )
-        PairedLaunch.matchPartnerShown(AppLauncher.YT_MUSIC_PKG)!!.invoke()
+        // No two-step dance: Waze exits any split while starting navigation, so the
+        // destination goes out fullscreen right away and the split is rebuilt afterwards.
+        assertEquals(0, steppedAside)
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.WAZE_PKG, intent.`package`)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+    }
+
+    @Test fun `destination without a music sighting does not arm the repair`() {
+        SplitScreen.enabled = true
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        assertNull(SplitRepair.pendingNav())
+    }
+
+    @Test fun `destination with the split toggle off does not arm the repair`() {
+        SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        assertNull(SplitRepair.pendingNav())
+    }
+
+    @Test fun `repair fire with an unresolvable music app is safe`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
+        launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
+        shadowOf(context as android.app.Application).clearNextStartedActivities()
+        // Robolectric can't resolve YT Music's launch intent — the attempt must not throw
+        // and must not start anything.
+        SplitRepair.takeAttempt()!!.invoke()
+        assertNull(shadowOf(context as android.app.Application).nextStartedActivity)
     }
 
     @Test fun `paired launch falls back to a direct launch when the nav partner is unresolvable`() {

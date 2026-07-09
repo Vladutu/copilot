@@ -50,10 +50,13 @@ class SplitScreenTest {
         assertTrue(SplitScreen.launchAdjacent(YTM))
     }
 
-    @Test fun `enabled - nav target already in a pane is delivered plain (waze exits splits on deep links)`() {
+    @Test fun `enabled - nav app in the unfocused pane launches adjacent (launch intents reuse the pane)`() {
+        // Destination deep links never consult this policy (dispatch delivers them plain
+        // and arms SplitRepair); launch-intent launches (openWazeApp, switch-back) may
+        // reuse the existing pane in place.
         SplitScreen.enabled = true
         SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = YTM)
-        assertFalse(SplitScreen.launchAdjacent(WAZE))
+        assertTrue(SplitScreen.launchAdjacent(WAZE))
     }
 
     @Test fun `enabled - target owning the focused pane is not adjacent (double-Waze guard)`() {
@@ -71,23 +74,33 @@ class SplitScreenTest {
         assertEquals(WAZE, SplitScreen.pairingPartnerFor(YTM))
     }
 
-    @Test fun `no pairing when a partner pane is already visible (single adjacent launch suffices)`() {
+    @Test fun `visible nav app without a live split still pairs (the toggle must create the split)`() {
+        // An adjacent flag alone can't create a split from a background caller, so the
+        // song-while-navigating case routes through the toggle machinery too.
         SplitScreen.enabled = true
         SplitScreen.onForeground(WAZE)
         SplitScreen.onWindows(visible = setOf(WAZE), focused = WAZE)
+        assertEquals(WAZE, SplitScreen.pairingPartnerFor(YTM))
+    }
+
+    @Test fun `no pairing when a split is already live (single adjacent launch suffices)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(WAZE)
+        SplitScreen.onWindows(visible = setOf(WAZE, SplitScreen.SOUNDCLOUD_PKG), focused = WAZE)
         assertNull(SplitScreen.pairingPartnerFor(YTM))
     }
 
-    @Test fun `nav target pairs with the last music app (destination while a song plays)`() {
-        SplitScreen.enabled = true
-        SplitScreen.onForeground(YTM)
-        assertEquals(YTM, SplitScreen.pairingPartnerFor(WAZE))
-    }
-
-    @Test fun `nav target without a music sighting does not pair`() {
+    @Test fun `prefers the visible nav app over the remembered one`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(WAZE)
-        assertNull(SplitScreen.pairingPartnerFor(MAPS))
+        SplitScreen.onWindows(visible = setOf(MAPS), focused = MAPS)
+        assertEquals(MAPS, SplitScreen.pairingPartnerFor(YTM))
+    }
+
+    @Test fun `nav targets never pair (they deliver plain and repair after)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YTM)
+        assertNull(SplitScreen.pairingPartnerFor(WAZE))
     }
 
     @Test fun `no pairing before any nav app was seen`() {
@@ -106,6 +119,38 @@ class SplitScreenTest {
         assertNull(SplitScreen.pairingPartnerFor(SplitScreen.SOUNDCLOUD_PKG))
     }
 
+    // repairPartnerFor (post-destination split rebuild)
+
+    @Test fun `nav target repairs with the last music app (destination while a song plays)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YTM)
+        assertEquals(YTM, SplitScreen.repairPartnerFor(WAZE))
+    }
+
+    @Test fun `nav target without a music sighting has nothing to repair`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(WAZE)
+        assertNull(SplitScreen.repairPartnerFor(MAPS))
+    }
+
+    @Test fun `no repair when disabled`() {
+        SplitScreen.onForeground(YTM)
+        assertNull(SplitScreen.repairPartnerFor(WAZE))
+    }
+
+    @Test fun `music targets never take the repair path`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YTM)
+        assertNull(SplitScreen.repairPartnerFor(YTM))
+    }
+
+    @Test fun `repair is armed even with a music pane visible (it will not survive the deep link)`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YTM)
+        SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = YTM)
+        assertEquals(YTM, SplitScreen.repairPartnerFor(WAZE))
+    }
+
     // window snapshot
 
     @Test fun `split is active only with two real apps on screen - copilot does not count`() {
@@ -115,6 +160,17 @@ class SplitScreenTest {
         assertFalse(SplitScreen.isSplitActive())
         SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = WAZE)
         assertTrue(SplitScreen.isSplitActive())
+    }
+
+    @Test fun `sole foreground - focused alone, copilot windows do not count`() {
+        SplitScreen.onWindows(visible = setOf(WAZE), focused = WAZE)
+        assertTrue(SplitScreen.isSoleForeground(WAZE))
+        SplitScreen.onWindows(visible = setOf(COPILOT, WAZE), focused = WAZE)
+        assertTrue(SplitScreen.isSoleForeground(WAZE))
+        SplitScreen.onWindows(visible = setOf(WAZE, YTM), focused = WAZE)
+        assertFalse(SplitScreen.isSoleForeground(WAZE))
+        SplitScreen.onWindows(visible = setOf(WAZE), focused = COPILOT)
+        assertFalse(SplitScreen.isSoleForeground(WAZE))
     }
 
     @Test fun `isVisible tracks the latest window snapshot`() {
