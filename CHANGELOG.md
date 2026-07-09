@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.23.1] - 2026-07-09
+
+### Fixed
+- Keep split-screen alive with FLAG_ACTIVITY_LAUNCH_ADJACENT
+
 ## [0.23.0] - 2026-07-09
 
 ### Added
@@ -323,6 +328,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.23.1]: https://github.com/Vladutu/copilot/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/Vladutu/copilot/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Vladutu/copilot/compare/v0.21.5...v0.22.0
 [0.21.5]: https://github.com/Vladutu/copilot/compare/v0.21.4...v0.21.5
