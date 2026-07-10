@@ -10,16 +10,19 @@ package com.vladutu.copilot.split
  * foreground changes; [com.vladutu.copilot.CopilotApp] mirrors the Settings toggle into
  * [enabled]; [com.vladutu.copilot.launch.AppLauncher] and the service's switch-back consult it.
  *
- * The core rule (learned in the emulator): the system pairs an adjacent launch with the
- * *focused* task. So adjacent is only allowed when a real partner app is on screen to pair
- * with — launching adjacent while Copilot is focused would drag Copilot itself into the
- * split. Building a split *from* Copilot therefore takes two steps (see [pairingPartnerFor]
- * and [PairedLaunch]): bring the nav app to front first, then launch the music app adjacent.
+ * Carbox-established rules (2026-07-10 logs) this policy encodes:
+ *  - A LAUNCH-INTENT launch with LAUNCH_ADJACENT onto a focused, settled partner builds a
+ *    real split (the system pairs both apps itself — log: "split complete").
+ *  - A DEEP-LINK launch with LAUNCH_ADJACENT only half-creates: the target lands in a pane
+ *    with the other pane black. Deep links may therefore only go adjacent into an
+ *    already-live split (pane delivery, phone-proven) — never to create one.
+ *  - A nav app must never be launched adjacent at all: relaunching Waze into a pane
+ *    re-delivers its root destination intent and duplicates it (Waze|Waze, one navigating,
+ *    one back on the confirm screen).
  *
- * The nav direction is the mirror image with one extra wrinkle: nav apps recreate their
- * task while starting navigation and fall out of any split (phone-verified on Waze), so a
- * destination is always delivered plain fullscreen and the split is rebuilt *afterwards*
- * around the running navigation (see [repairPartnerFor] and [SplitRepair]).
+ * So every command is delivered plain fullscreen first, and [SplitRepair] then converges
+ * the screen to the nav|music split: bring the nav app to front, wait for it to settle,
+ * launch the music app's task adjacent ([repairNavFor] / [repairMusicFor]).
  *
  * The intended driving setup is nav (Waze/Maps) in one pane and a music app in the other.
  * Android offers no public API to pin an app to a specific side — placement follows launch
@@ -102,22 +105,16 @@ object SplitScreen {
     }
 
     /**
-     * The nav app to get on screen (and split via the toggle) before launching the music
-     * target [targetPkg] adjacent. Music targets only — nav targets go through the plain
-     * delivery + [SplitRepair] flow instead, because delivering a destination into a pane
-     * collapses the split from inside the nav app.
-     *
-     * Pairing is needed whenever no *split* is live yet: with nothing but Copilot on screen
-     * (the classic two-step build), and also with a partner merely visible fullscreen — an
-     * adjacent flag alone can't create a split from a background caller (emulator-verified),
-     * so the song-while-navigating case must route through the toggle machinery too. Only a
-     * genuinely live split makes the single adjacent launch sufficient. Prefers the visible
-     * nav app over the remembered one so the wait matches what's actually on screen.
+     * The nav app [SplitRepair] should rebuild the split around after a plain delivery of
+     * the music target [targetPkg], or null when there's no rebuild to do: toggle off, not
+     * a music target, a split already live (the deep link was delivered adjacent into its
+     * pane instead), or no nav app known this drive. Prefers the visible nav app over the
+     * remembered one so the rebuild matches what's actually on screen.
      */
-    fun pairingPartnerFor(targetPkg: String): String? {
+    fun repairNavFor(targetPkg: String): String? {
         if (!enabled) return null
         if (targetPkg !in PAIRS_WITH_NAV) return null
-        if (hasVisiblePartner(targetPkg) && isSplitActive()) return null
+        if (isSplitActive()) return null
         return visiblePackages.firstOrNull { it in NAV_PKGS && it != targetPkg } ?: lastNavApp
     }
 
@@ -127,7 +124,7 @@ object SplitScreen {
      * seen this drive). Deliberately ignores what's currently visible: even a live music
      * pane won't survive the nav app's task recreation, so the repair is armed regardless.
      */
-    fun repairPartnerFor(targetPkg: String): String? {
+    fun repairMusicFor(targetPkg: String): String? {
         if (!enabled) return null
         if (targetPkg !in NAV_PKGS) return null
         return lastMusicApp

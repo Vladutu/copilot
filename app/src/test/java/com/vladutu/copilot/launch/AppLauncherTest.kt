@@ -7,8 +7,6 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
-import com.vladutu.copilot.split.CopilotForeground
-import com.vladutu.copilot.split.PairedLaunch
 import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
 import android.content.Intent
@@ -43,9 +41,7 @@ class AppLauncherTest {
         launcher = AppLauncher(context, soundCloudPauser = pauser)
         SplitScreen.reset()
         SplitScreen.ownPackage = context.packageName
-        PairedLaunch.clear()
         SplitRepair.clear()
-        CopilotForeground.stepAside = null
     }
 
     private fun msg(cmd: String, form: Form, url: String) =
@@ -157,21 +153,40 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
     }
 
-    @Test fun `split toggle on - music command with a visible nav pane launches adjacent`() {
+    @Test fun `split toggle on - music command over fullscreen nav goes plain and arms the repair`() {
+        // Deep links never CREATE splits (adjacent deep link = half-empty black-pane split
+        // on the carbox): the song fires plain and the reconciler rebuilds the split after.
         SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
         SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
         launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
-        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertEquals(AppLauncher.YT_MUSIC_PKG, SplitRepair.pendingMusic())
     }
 
-    @Test fun `split toggle on - radio with a visible nav pane launches adjacent too`() {
+    @Test fun `split toggle on - music command into a live split delivers adjacent into its pane`() {
         SplitScreen.enabled = true
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
+            focused = AppLauncher.WAZE_PKG,
+        )
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertNull(SplitRepair.pendingNav())
+    }
+
+    @Test fun `split toggle on - radio over fullscreen nav goes plain and arms the repair too`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
         SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
         launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
-        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        assertEquals(AppLauncher.VLC_PKG, SplitRepair.pendingMusic())
     }
 
     @Test fun `split toggle on - launch with only copilot on screen stays fullscreen`() {
@@ -197,42 +212,27 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
     }
 
-    @Test fun `paired launch steps copilot aside and fires adjacent when the split resurfaces`() {
+    @Test fun `music command from copilot goes plain and arms the repair (no step-aside dance)`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(AppLauncher.WAZE_PKG)
         SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
-        var steppedAside = 0
-        CopilotForeground.stepAside = { steppedAside++ }
 
         val res = launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
         assertTrue(res is AppLauncher.Result.Ok)
-        assertEquals(1, steppedAside)
-        // Nothing started yet — the deep link waits for the covered split to resurface.
-        assertNull(shadowOf(context as android.app.Application).nextStartedActivity)
-
-        // Split resurfaces (what the service's window snapshot would report), continuation fires.
-        SplitScreen.onWindows(
-            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
-            focused = AppLauncher.WAZE_PKG,
-        )
-        PairedLaunch.matchPartnerShown(AppLauncher.WAZE_PKG)!!.invoke()
+        // The song fires right away, fullscreen — the reconciler converges to the split after.
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
-        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
     }
 
     @Test fun `destination fires plain immediately and arms the split repair`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(AppLauncher.YT_MUSIC_PKG)
         SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
-        var steppedAside = 0
-        CopilotForeground.stepAside = { steppedAside++ }
 
         val res = launcher.launch(msg("waze", Form.DESTINATION, "https://ul.waze.com/ul?ll=1,2"))
         assertTrue(res is AppLauncher.Result.Ok)
-        // No two-step dance: Waze exits any split while starting navigation, so the
-        // destination goes out fullscreen right away and the split is rebuilt afterwards.
-        assertEquals(0, steppedAside)
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertEquals(AppLauncher.WAZE_PKG, intent.`package`)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
@@ -262,17 +262,16 @@ class AppLauncherTest {
         assertNull(shadowOf(context as android.app.Application).nextStartedActivity)
     }
 
-    @Test fun `paired launch falls back to a direct launch when the nav partner is unresolvable`() {
-        // Two-step conditions met (music from Copilot, Waze seen earlier) but Robolectric
-        // can't resolve a Waze launch intent — the deep link must still fire, fullscreen.
+    @Test fun `music command with a repair armed does not arm autoswitch`() {
+        // The command's end state is the split; pulling the arm-time foreground back on
+        // top would fight the reconciler.
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
         SplitScreen.enabled = true
         SplitScreen.onForeground(AppLauncher.WAZE_PKG)
-        SplitScreen.onWindows(visible = setOf(context.packageName), focused = context.packageName)
-        val res = launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
-        assertTrue(res is AppLauncher.Result.Ok)
-        val intent = shadowOf(context as android.app.Application).nextStartedActivity
-        assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
-        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertFalse(AutoSwitchBack.isArmed())
     }
 
     @Test fun `arms autoswitch for ytmusic launch`() {

@@ -16,7 +16,7 @@ package com.vladutu.copilot.split
  *    navigation the driver asked for), the partner is brought back to the front plain.
  *  - AMBIGUOUS: mid-animation — wait for the next window event and measure again.
  *
- * Pure Kotlin, main-thread-only, one-shot with generation tokens, like [PairedLaunch].
+ * Pure Kotlin, main-thread-only, one-shot with generation tokens, like [SplitRepair].
  */
 object SplitFill {
 

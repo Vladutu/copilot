@@ -13,8 +13,6 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
-import com.vladutu.copilot.split.CopilotForeground
-import com.vladutu.copilot.split.PairedLaunch
 import com.vladutu.copilot.split.SplitFill
 import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
@@ -104,84 +102,48 @@ class AppLauncher(
     }
 
     /**
-     * Start [intent] under the split policy. Shapes:
-     *  - nav destination: always delivered plain fullscreen — nav apps recreate their task
-     *    while starting navigation and fall out of any split (phone-verified on Waze), so
-     *    building or protecting a split *before* the delivery is wasted. Instead
-     *    [SplitRepair] is armed and the accessibility service rebuilds the split around the
-     *    running navigation once the nav app has settled alone in the foreground.
-     *  - paired music launch ([SplitScreen.pairingPartnerFor]): get the nav partner on
-     *    screen, then fire the deep link once the accessibility service
-     *    confirms it's visible. When Copilot is the foreground activity it steps aside first
-     *    (moveTaskToBack): a split covered by Copilot resurfaces intact, whereas relaunching
-     *    one of its members with startActivity rips it out and dissolves the pair
-     *    (emulator-verified). Only if nothing resurfaces within the reveal TTL do we launch
-     *    the partner ourselves. The adjacent-vs-fullscreen flag is decided at fire time from
-     *    the fresh window snapshot, and a final TTL guarantees the song plays regardless.
-     *  - single adjacent launch when a live split already has a pane for the partner;
-     *  - plain fullscreen otherwise (or whenever the split toggle is off).
-     * Auto-return is deliberately not armed on the paired path: the driver asked for the
-     * split, so pulling Copilot (the arm-time foreground) back on top would cover it.
+     * Start [intent] under the split policy. Every delivery is plain fullscreen except one:
+     * a music deep link aimed at an already-live split goes adjacent straight into its pane
+     * (phone-proven delivery; the flag is inert on the pane the app already occupies).
+     * Everything else converges to the split AFTER the delivery via [SplitRepair] — deep
+     * links must never create a split (adjacent deep link = half-empty black-pane split on
+     * the carbox) and nav apps must never launch adjacent at all (duplicate Waze):
+     *  - nav destination: plain, then repair re-attaches the last music app once
+     *    navigation has settled;
+     *  - music command with a nav app known this drive: plain (the song starts right
+     *    away), then repair brings the nav app up and pulls the music task adjacent.
+     * Auto-return is not armed when a repair is: the command's end state is the split, so
+     * pulling the arm-time foreground back on top would fight the reconciler.
      */
     private fun dispatch(intent: Intent, targetPkg: String, missingMsg: String, armAutoSwitch: Boolean): Result {
-        // A new command supersedes any pending post-destination rebuild or scaffold fill:
-        // a music launch changes the music side itself (a stale repair or fill firing
-        // mid-build could wreck the fresh split), and a nav launch arms a fresh watch below.
+        // A new command supersedes any pending rebuild or scaffold fill: a stale stage
+        // firing mid-delivery could wreck the fresh launch's windowing.
         SplitRepair.clear()
         SplitFill.clear()
         if (targetPkg in SplitScreen.NAV_PKGS) {
-            val repairPartner = SplitScreen.repairPartnerFor(targetPkg)
+            val music = SplitScreen.repairMusicFor(targetPkg)
             val result = startDirect(intent, targetPkg, missingMsg, armAutoSwitch, forcePlain = true)
-            if (result is Result.Ok && repairPartner != null) armRepair(targetPkg, repairPartner)
+            if (result is Result.Ok && music != null) armRepair(targetPkg, music)
             return result
         }
-        val partner = SplitScreen.pairingPartnerFor(targetPkg)
-        if (partner != null) {
-            val fire = {
-                val adjacent = SplitScreen.launchAdjacent(targetPkg)
-                if (adjacent) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
-                DiagnosticLog.i(TAG, "paired fire $targetPkg adjacent=$adjacent — ${SplitScreen.stateForDiagnostics()}")
-                startSilently(intent)
-            }
-            val stepAside = CopilotForeground.stepAside
-            if (stepAside != null) {
-                DiagnosticLog.i(TAG, "paired launch: stepping aside, waiting for $partner — ${SplitScreen.stateForDiagnostics()}")
-                val token = PairedLaunch.arm(partner, targetPkg, paired = fire, timeout = { launchPartner(partner, targetPkg, fire) })
-                handler.postDelayed({ PairedLaunch.takeTimeout(token)?.invoke() }, PairedLaunch.REVEAL_TTL_MS)
-                stepAside()
-            } else {
-                DiagnosticLog.i(TAG, "paired launch: $partner first — ${SplitScreen.stateForDiagnostics()}")
-                launchPartner(partner, targetPkg, fire)
-            }
-            return Result.Ok
+        if (SplitScreen.isSplitActive()) {
+            return startDirect(intent, targetPkg, missingMsg, armAutoSwitch)
         }
-        return startDirect(intent, targetPkg, missingMsg, armAutoSwitch)
+        val nav = SplitScreen.repairNavFor(targetPkg)
+        if (nav != null) {
+            val result = startDirect(intent, targetPkg, missingMsg, armAutoSwitch = false, forcePlain = true)
+            if (result is Result.Ok) armRepair(nav, targetPkg)
+            return result
+        }
+        // No split intent (toggle off, or no nav app seen): plain — a deep link may never
+        // carry the adjacent flag outside a live split.
+        return startDirect(intent, targetPkg, missingMsg, armAutoSwitch, forcePlain = true)
     }
 
-    /** Second stage when no covered split resurfaced (or Copilot wasn't the foreground
-     *  activity): bring the partner up ourselves, fire on the service's confirmation, with
-     *  a TTL so the song still plays if the partner never shows. */
-    private fun launchPartner(partner: String, targetPkg: String, fire: () -> Unit) {
-        val partnerIntent = context.packageManager.getLaunchIntentForPackage(partner)
-            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-        val started = partnerIntent != null && runCatching { context.startActivity(partnerIntent) }.isSuccess
-        if (!started) {
-            DiagnosticLog.w(TAG, "pair partner $partner could not start — firing directly")
-            fire()
-            return
-        }
-        DiagnosticLog.i(TAG, "pair partner $partner launched, firing on confirm")
-        val token = PairedLaunch.arm(partner, targetPkg, paired = fire, timeout = {
-            DiagnosticLog.w(TAG, "pair TTL expired ($partner never confirmed) — firing anyway")
-            fire()
-        })
-        handler.postDelayed({ PairedLaunch.takeTimeout(token)?.invoke() }, PairedLaunch.PAIR_TTL_MS)
-    }
-
-    /** Arm the post-delivery split rebuild for a destination launch: once the service sees
-     *  [navPkg] settled alone in navigation, it toggles split mode and invokes this
-     *  continuation to pull [musicPkg]'s (already playing) task into the other pane. A plain
-     *  launch intent, no deep link — and adjacent decided at fire time like the paired path. */
+    /** Arm the post-delivery split rebuild: once the service sees [navPkg] settled alone in
+     *  the foreground, it invokes this continuation to pull [musicPkg]'s (already playing)
+     *  task into the other pane. A plain launch intent, no deep link — the launch-intent
+     *  adjacent launch is the one shape the carbox pairs into a real split. */
     private fun armRepair(navPkg: String, musicPkg: String) {
         val fire = fire@{
             val launch = context.packageManager.getLaunchIntentForPackage(musicPkg)
@@ -223,8 +185,8 @@ class AppLauncher(
         }
     }
 
-    /** Deferred half of a paired launch or split repair: by the time it fires the command
-     *  was already acked, so failures can only be logged, not surfaced. */
+    /** Deferred half of a split repair: by the time it fires the command was already
+     *  acked, so failures can only be logged, not surfaced. */
     private fun startSilently(intent: Intent) {
         runCatching { context.startActivity(intent) }
             .onSuccess { DiagnosticLog.i(TAG, "deferred stage started: ${intent.`package` ?: intent.data} flags=0x${intent.flags.toString(16)}") }

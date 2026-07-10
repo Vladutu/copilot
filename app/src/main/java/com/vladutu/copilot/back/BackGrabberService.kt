@@ -17,7 +17,6 @@ import com.vladutu.copilot.MainActivity
 import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
-import com.vladutu.copilot.split.PairedLaunch
 import com.vladutu.copilot.split.SplitFill
 import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
@@ -107,7 +106,6 @@ class BackGrabberService : AccessibilityService() {
         // Both event types can change what's on screen / who has focus; keep the split
         // policy's window snapshot current before any launch decision reads it.
         updateWindowSnapshot()
-        maybeFirePairedLaunch()
         maybeRepairSplit()
         maybeFillSplit()
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -133,28 +131,16 @@ class BackGrabberService : AccessibilityService() {
         }
     }
 
-    /** Second half of a paired launch: the awaited nav partner is now visible — either the
-     *  split Copilot stepped away from resurfaced, or the partner AppLauncher started came
-     *  up. Matched on window-snapshot visibility, not the event's package: a resurfacing
-     *  split may only emit state-changed events for its focused half. */
-    private fun maybeFirePairedLaunch() {
-        val partner = PairedLaunch.pendingPartner() ?: return
-        if (!SplitScreen.isVisible(partner)) return
-        val target = PairedLaunch.pendingTarget()
-        PairedLaunch.matchPartnerShown(partner)?.let { fire ->
-            DiagnosticLog.i(TAG, "pair partner $partner visible — entering split in ${PairedLaunch.PARTNER_SETTLE_MS}ms")
-            handler.postDelayed(
-                { enterSplitThenFire(target, partner, fire, recoverPartner = false) },
-                PairedLaunch.PARTNER_SETTLE_MS,
-            )
-        }
-    }
-
     /**
-     * Post-destination split rebuild ([SplitRepair], armed by AppLauncher when a destination
-     * was delivered): once the nav app has held the screen alone for NAV_STABLE_MS, toggle
-     * split mode around it and pull the music app into the other pane. The stability wait
-     * plus the Waze confirm-screen guard aim the rebuild *after* the nav-start task
+     * The split reconciler's staged watcher ([SplitRepair], armed by AppLauncher after every
+     * plain delivery with a known partner). Each stage waits for the window snapshot to hold
+     * still for NAV_STABLE_MS before acting:
+     *  - music app alone (a song was just delivered plain): bring the nav app to front with
+     *    a plain launch intent — the split builds around the nav side;
+     *  - nav app alone (a destination settled, or the bring above landed) and Waze past its
+     *    "Go now" confirm: take an attempt and launch the music task adjacent (the
+     *    carbox-proven pairing step).
+     * The stability wait plus the confirm guard aim the rebuild *after* the nav-start task
      * recreation that collapses any earlier split; if an attempt still lands too early and
      * gets collapsed, the recreation's own window events re-enter this path and the next
      * attempt converges. Skipped rounds don't reschedule themselves — the next window event
@@ -162,33 +148,47 @@ class BackGrabberService : AccessibilityService() {
      */
     private fun maybeRepairSplit() {
         val nav = SplitRepair.pendingNav() ?: return
-        if (!SplitScreen.isSoleForeground(nav)) return
+        val music = SplitRepair.pendingMusic() ?: return
+        val settling = when {
+            SplitScreen.isSoleForeground(nav) -> nav
+            SplitScreen.isSoleForeground(music) && !SplitScreen.isVisible(nav) -> music
+            else -> return
+        }
         if (repairCheckPending) return
         repairCheckPending = true
-        DiagnosticLog.i(TAG, "repair: $nav alone — re-split check in ${SplitRepair.NAV_STABLE_MS}ms")
-        handler.postDelayed({ fireRepairCheck(nav) }, SplitRepair.NAV_STABLE_MS)
+        DiagnosticLog.i(TAG, "repair: $settling alone — check in ${SplitRepair.NAV_STABLE_MS}ms")
+        handler.postDelayed({ fireRepairCheck() }, SplitRepair.NAV_STABLE_MS)
     }
 
-    private fun fireRepairCheck(nav: String) {
+    private fun fireRepairCheck() {
         repairCheckPending = false
-        if (SplitRepair.pendingNav() != nav) return
-        if (!SplitScreen.isSoleForeground(nav)) {
-            DiagnosticLog.i(TAG, "repair check: $nav no longer alone — waiting")
+        val nav = SplitRepair.pendingNav() ?: return
+        val music = SplitRepair.pendingMusic() ?: return
+        if (SplitScreen.isSoleForeground(nav)) {
+            // Splitting while Waze still shows its "Go now" confirm is wasted: the task
+            // recreation at navigation start would collapse the fresh split (and steal
+            // focus from Waze, breaking the knob confirm tap). Wait for the confirm to
+            // clear; the retry budget covers a label mismatch making this guard miss.
+            if (nav == SplitScreen.WAZE_PKG && wazeConfirmOnScreen()) {
+                DiagnosticLog.i(TAG, "repair check: Waze still on the confirm screen — waiting for navigation start")
+                return
+            }
+            SplitRepair.takeAttempt()?.let { fire ->
+                DiagnosticLog.i(TAG, "repair: rebuilding split around $nav (${SplitRepair.attemptsForDiagnostics()})")
+                enterSplitThenFire(music, nav, fire, recoverPartner = true)
+            }
             return
         }
-        // Splitting while Waze still shows its "Go now" confirm is wasted: the task
-        // recreation at navigation start would collapse the fresh split (and steal focus
-        // from Waze, breaking the knob confirm tap). Wait for the confirm to clear; the
-        // retry budget covers a label mismatch making this guard miss.
-        if (nav == SplitScreen.WAZE_PKG && wazeConfirmOnScreen()) {
-            DiagnosticLog.i(TAG, "repair check: Waze still on the confirm screen — waiting for navigation start")
+        if (SplitScreen.isSoleForeground(music) && !SplitScreen.isVisible(nav)) {
+            if (!SplitRepair.takeNavBring()) {
+                DiagnosticLog.w(TAG, "repair check: bring budget exhausted — leaving $music fullscreen")
+                return
+            }
+            DiagnosticLog.i(TAG, "repair: $music settled — bringing $nav to front")
+            startPackage(nav, adjacent = false)
             return
         }
-        val music = SplitRepair.pendingMusic()
-        SplitRepair.takeAttempt()?.let { fire ->
-            DiagnosticLog.i(TAG, "repair: rebuilding split around $nav (${SplitRepair.attemptsForDiagnostics()})")
-            enterSplitThenFire(music, nav, fire, recoverPartner = true)
-        }
+        DiagnosticLog.i(TAG, "repair check: screen changed while settling — waiting")
     }
 
     /** Searches every Waze application window rather than rootInActiveWindow: at repair time
@@ -236,8 +236,8 @@ class BackGrabberService : AccessibilityService() {
         }
         val dispatched = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
         if (dispatched) {
-            DiagnosticLog.i(TAG, "toggle split dispatched — firing in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
-            handler.postDelayed(fire, PairedLaunch.SPLIT_ENGAGE_MS)
+            DiagnosticLog.i(TAG, "toggle split dispatched — firing in ${SplitRepair.SPLIT_ENGAGE_MS}ms")
+            handler.postDelayed(fire, SplitRepair.SPLIT_ENGAGE_MS)
             return
         }
         if (targetPkg == null || partnerPkg == null) {
@@ -288,8 +288,13 @@ class BackGrabberService : AccessibilityService() {
                 if (SplitScreen.isVisible(fill)) {
                     DiagnosticLog.i(TAG, "scaffold check: $await in a pane ($pct%) and $fill already visible — split complete")
                 } else {
-                    DiagnosticLog.i(TAG, "scaffold check: $await in a pane ($pct%) — filling the black half with $fill")
-                    startPackage(fill, adjacent = true)
+                    // Nav apps must never launch adjacent (relaunching Waze into a pane
+                    // re-delivers its root destination intent → duplicate Waze, carbox-
+                    // verified). Bring the nav partner up plain instead — it dissolves the
+                    // half-empty split and the repair watcher gets another attempt.
+                    val adjacent = fill !in SplitScreen.NAV_PKGS
+                    DiagnosticLog.i(TAG, "scaffold check: $await in a pane ($pct%) — bringing $fill up (adjacent=$adjacent)")
+                    startPackage(fill, adjacent = adjacent)
                 }
             }
             SplitFill.Verdict.FULLSCREEN -> {
