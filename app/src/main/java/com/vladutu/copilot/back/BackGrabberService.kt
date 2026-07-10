@@ -18,6 +18,7 @@ import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.bubble.BubbleController
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitFill
 import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
 import com.vladutu.copilot.waze.GoNodeMatcher
@@ -56,6 +57,10 @@ class BackGrabberService : AccessibilityService() {
     /** Guards against stacking repair settle-timers from the window-event burst while
      *  navigation starts. */
     private var repairCheckPending = false
+
+    /** Guards against stacking scaffold-measure timers from the split-container animation's
+     *  window-event burst. */
+    private var fillCheckPending = false
 
     /** Live mirror of the Waze Go-now settings, kept current by collectors started in
      *  onServiceConnected. Read synchronously from onKeyEvent (which is not a coroutine). */
@@ -104,6 +109,7 @@ class BackGrabberService : AccessibilityService() {
         updateWindowSnapshot()
         maybeFirePairedLaunch()
         maybeRepairSplit()
+        maybeFillSplit()
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
 
@@ -134,9 +140,13 @@ class BackGrabberService : AccessibilityService() {
     private fun maybeFirePairedLaunch() {
         val partner = PairedLaunch.pendingPartner() ?: return
         if (!SplitScreen.isVisible(partner)) return
+        val target = PairedLaunch.pendingTarget()
         PairedLaunch.matchPartnerShown(partner)?.let { fire ->
             DiagnosticLog.i(TAG, "pair partner $partner visible — entering split in ${PairedLaunch.PARTNER_SETTLE_MS}ms")
-            handler.postDelayed({ enterSplitThenFire(fire) }, PairedLaunch.PARTNER_SETTLE_MS)
+            handler.postDelayed(
+                { enterSplitThenFire(target, partner, fire, recoverPartner = false) },
+                PairedLaunch.PARTNER_SETTLE_MS,
+            )
         }
     }
 
@@ -174,42 +184,161 @@ class BackGrabberService : AccessibilityService() {
             DiagnosticLog.i(TAG, "repair check: Waze still on the confirm screen — waiting for navigation start")
             return
         }
+        val music = SplitRepair.pendingMusic()
         SplitRepair.takeAttempt()?.let { fire ->
             DiagnosticLog.i(TAG, "repair: rebuilding split around $nav (${SplitRepair.attemptsForDiagnostics()})")
-            enterSplitThenFire(fire, fireOnToggleFailure = false)
+            enterSplitThenFire(music, nav, fire, recoverPartner = true)
         }
     }
 
+    /** Searches every Waze application window rather than rootInActiveWindow: at repair time
+     *  the active window can be an overlay (the bubble, the carbox's floating ball), which
+     *  made this guard miss on the carbox while the confirm was plainly on screen. */
     private fun wazeConfirmOnScreen(): Boolean {
-        val root = rootInActiveWindow ?: return false
-        return findGoNode(root, wazeGoLabel.ifBlank { WazeGoDefaults.LABEL }) != null
+        val label = wazeGoLabel.ifBlank { WazeGoDefaults.LABEL }
+        for (window in windows) {
+            if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            val root = window.root ?: continue
+            if (root.packageName?.toString() != SplitScreen.WAZE_PKG) continue
+            if (findGoNode(root, label) != null) return true
+        }
+        return false
     }
 
     /**
      * Third stage of the two-step split build. LAUNCH_ADJACENT can only place an app into an
      * *existing* split — a background caller can't create one with the flag alone (emulator:
-     * the deep link just opened fullscreen over the partner). So: enter split mode via the
-     * global action (the programmatic long-press-Recents — puts the focused nav partner into
-     * a pane), give the system a beat to engage, then fire the adjacent deep link into the
-     * other pane. If the split is somehow already live, toggling would tear it down — skip
-     * straight to the deep link. When the toggle is unsupported (dispatch returns false) the
-     * launch fires and lands fullscreen only when [fireOnToggleFailure]: right for a song
-     * (it must play regardless), wrong for a split repair (a fullscreen music launch would
-     * cover the navigation the driver just asked for).
+     * the deep link just opened fullscreen over the partner). Preferred route: enter split
+     * mode via the global action (the programmatic long-press-Recents — puts the focused nav
+     * partner into a pane), give the system a beat to engage, then fire the adjacent deep
+     * link into the other pane. If the split is somehow already live, toggling would tear it
+     * down — skip straight to the deep link.
+     *
+     * When the toggle is REFUSED (dispatched=false — emulator AND carbox), fall back to the
+     * adjacent-scaffold route: fire the adjacent launch anyway and arm [SplitFill]. On the
+     * carbox that launch builds a half-empty split ([targetPkg] in a pane, the other pane
+     * black, [partnerPkg] fullscreen behind); the fill watcher then launches the partner
+     * adjacent into the black half. Where the flag is ignored instead (emulator), the fill
+     * watcher sees a fullscreen window: the paired path accepts it (the song must play,
+     * [recoverPartner]=false), the repair path relaunches the partner plain so music never
+     * ends up covering navigation ([recoverPartner]=true).
      */
-    private fun enterSplitThenFire(fire: () -> Unit, fireOnToggleFailure: Boolean = true) {
+    private fun enterSplitThenFire(
+        targetPkg: String?,
+        partnerPkg: String?,
+        fire: () -> Unit,
+        recoverPartner: Boolean,
+    ) {
         if (SplitScreen.isSplitActive()) {
             DiagnosticLog.i(TAG, "split already active — firing deep link directly")
             fire()
             return
         }
         val dispatched = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
-        DiagnosticLog.i(TAG, "toggle split dispatched=$dispatched — firing in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
-        if (!dispatched && !fireOnToggleFailure) {
-            DiagnosticLog.w(TAG, "toggle unsupported — skipping repair launch (won't cover navigation)")
+        if (dispatched) {
+            DiagnosticLog.i(TAG, "toggle split dispatched — firing in ${PairedLaunch.SPLIT_ENGAGE_MS}ms")
+            handler.postDelayed(fire, PairedLaunch.SPLIT_ENGAGE_MS)
             return
         }
-        handler.postDelayed(fire, PairedLaunch.SPLIT_ENGAGE_MS)
+        if (targetPkg == null || partnerPkg == null) {
+            // No package context to run the scaffold with — behave like the pre-scaffold code.
+            if (recoverPartner) {
+                DiagnosticLog.w(TAG, "toggle refused, no scaffold context — skipping repair launch")
+            } else {
+                fire()
+            }
+            return
+        }
+        DiagnosticLog.i(TAG, "toggle refused — adjacent scaffold: firing $targetPkg, fill=$partnerPkg recover=$recoverPartner")
+        val token = SplitFill.arm(targetPkg, partnerPkg, recoverPartner)
+        handler.postDelayed({
+            if (SplitFill.pendingAwait() != null) DiagnosticLog.w(TAG, "scaffold fill TTL — no verdict reached")
+            SplitFill.expire(token)
+        }, SplitFill.FILL_TTL_MS)
+        fire()
+    }
+
+    /**
+     * Adjacent-scaffold verdict watcher ([SplitFill]): once the adjacent-launched app has a
+     * window, measure its share of the screen. Pane-sized → the half-empty split exists;
+     * launch the partner adjacent into the black half. Fullscreen → the flag was ignored;
+     * recover the partner if the repair path asked for it. In-between → the split container
+     * is still animating; measure again on the next event or after another settle delay.
+     */
+    private fun maybeFillSplit() {
+        val await = SplitFill.pendingAwait() ?: return
+        if (!SplitScreen.isVisible(await)) return
+        if (fillCheckPending) return
+        fillCheckPending = true
+        handler.postDelayed({ fireFillCheck() }, SplitFill.SCAFFOLD_SETTLE_MS)
+    }
+
+    private fun fireFillCheck() {
+        fillCheckPending = false
+        val await = SplitFill.pendingAwait() ?: return
+        val fraction = windowScreenFraction(await)
+        if (fraction == null) {
+            DiagnosticLog.i(TAG, "scaffold check: no window for $await — waiting")
+            return
+        }
+        val pct = (fraction * 100).toInt()
+        when (SplitFill.classify(fraction)) {
+            SplitFill.Verdict.PANE -> {
+                val fill = SplitFill.takeFill() ?: return
+                if (SplitScreen.isVisible(fill)) {
+                    DiagnosticLog.i(TAG, "scaffold check: $await in a pane ($pct%) and $fill already visible — split complete")
+                } else {
+                    DiagnosticLog.i(TAG, "scaffold check: $await in a pane ($pct%) — filling the black half with $fill")
+                    startPackage(fill, adjacent = true)
+                }
+            }
+            SplitFill.Verdict.FULLSCREEN -> {
+                val recover = SplitFill.takeRecovery()
+                if (recover != null) {
+                    DiagnosticLog.w(TAG, "scaffold check: $await fullscreen ($pct%) — bringing $recover back to front")
+                    startPackage(recover, adjacent = false)
+                } else {
+                    DiagnosticLog.i(TAG, "scaffold check: $await fullscreen ($pct%) — no scaffold on this SystemUI")
+                }
+            }
+            SplitFill.Verdict.AMBIGUOUS -> {
+                DiagnosticLog.i(TAG, "scaffold check: $await at $pct% — still animating, re-measuring")
+                fillCheckPending = true
+                handler.postDelayed({ fireFillCheck() }, SplitFill.SCAFFOLD_SETTLE_MS)
+            }
+        }
+    }
+
+    /** The largest application-window share of the screen held by [pkg], or null when it
+     *  has no window right now. */
+    private fun windowScreenFraction(pkg: String): Float? {
+        val dm = resources.displayMetrics
+        val screenArea = dm.widthPixels.toFloat() * dm.heightPixels.toFloat()
+        if (screenArea <= 0f) return null
+        var best = -1f
+        val bounds = Rect()
+        for (window in windows) {
+            if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            if (window.root?.packageName?.toString() != pkg) continue
+            window.getBoundsInScreen(bounds)
+            val fraction = (bounds.width().toFloat() * bounds.height().toFloat()) / screenArea
+            if (fraction > best) best = fraction
+        }
+        return if (best < 0f) null else best
+    }
+
+    /** Launch [pkg]'s main task from the service (fill or recovery half of the scaffold). */
+    private fun startPackage(pkg: String, adjacent: Boolean) {
+        val intent = applicationContext.packageManager.getLaunchIntentForPackage(pkg)
+        if (intent == null) {
+            DiagnosticLog.w(TAG, "no launch intent for $pkg")
+            return
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (adjacent) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+        runCatching { applicationContext.startActivity(intent) }
+            .onSuccess { DiagnosticLog.i(TAG, "started $pkg adjacent=$adjacent flags=0x${intent.flags.toString(16)}") }
+            .onFailure { DiagnosticLog.w(TAG, "start failed for $pkg", it) }
     }
 
     /** Publish which real apps have a window on screen (and which is focused) to the split

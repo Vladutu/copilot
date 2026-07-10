@@ -15,6 +15,7 @@ import com.vladutu.copilot.net.Message
 import com.vladutu.copilot.soundcloud.SoundCloudPauser
 import com.vladutu.copilot.split.CopilotForeground
 import com.vladutu.copilot.split.PairedLaunch
+import com.vladutu.copilot.split.SplitFill
 import com.vladutu.copilot.split.SplitRepair
 import com.vladutu.copilot.split.SplitScreen
 
@@ -123,10 +124,11 @@ class AppLauncher(
      * split, so pulling Copilot (the arm-time foreground) back on top would cover it.
      */
     private fun dispatch(intent: Intent, targetPkg: String, missingMsg: String, armAutoSwitch: Boolean): Result {
-        // A new command supersedes any pending post-destination rebuild: a music launch
-        // changes the music side itself (a stale repair firing mid-build could toggle the
-        // fresh split away), and a nav launch arms a fresh watch below.
+        // A new command supersedes any pending post-destination rebuild or scaffold fill:
+        // a music launch changes the music side itself (a stale repair or fill firing
+        // mid-build could wreck the fresh split), and a nav launch arms a fresh watch below.
         SplitRepair.clear()
+        SplitFill.clear()
         if (targetPkg in SplitScreen.NAV_PKGS) {
             val repairPartner = SplitScreen.repairPartnerFor(targetPkg)
             val result = startDirect(intent, targetPkg, missingMsg, armAutoSwitch, forcePlain = true)
@@ -144,12 +146,12 @@ class AppLauncher(
             val stepAside = CopilotForeground.stepAside
             if (stepAside != null) {
                 DiagnosticLog.i(TAG, "paired launch: stepping aside, waiting for $partner — ${SplitScreen.stateForDiagnostics()}")
-                val token = PairedLaunch.arm(partner, paired = fire, timeout = { launchPartner(partner, fire) })
+                val token = PairedLaunch.arm(partner, targetPkg, paired = fire, timeout = { launchPartner(partner, targetPkg, fire) })
                 handler.postDelayed({ PairedLaunch.takeTimeout(token)?.invoke() }, PairedLaunch.REVEAL_TTL_MS)
                 stepAside()
             } else {
                 DiagnosticLog.i(TAG, "paired launch: $partner first — ${SplitScreen.stateForDiagnostics()}")
-                launchPartner(partner, fire)
+                launchPartner(partner, targetPkg, fire)
             }
             return Result.Ok
         }
@@ -159,7 +161,7 @@ class AppLauncher(
     /** Second stage when no covered split resurfaced (or Copilot wasn't the foreground
      *  activity): bring the partner up ourselves, fire on the service's confirmation, with
      *  a TTL so the song still plays if the partner never shows. */
-    private fun launchPartner(partner: String, fire: () -> Unit) {
+    private fun launchPartner(partner: String, targetPkg: String, fire: () -> Unit) {
         val partnerIntent = context.packageManager.getLaunchIntentForPackage(partner)
             ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
         val started = partnerIntent != null && runCatching { context.startActivity(partnerIntent) }.isSuccess
@@ -169,7 +171,7 @@ class AppLauncher(
             return
         }
         DiagnosticLog.i(TAG, "pair partner $partner launched, firing on confirm")
-        val token = PairedLaunch.arm(partner, paired = fire, timeout = {
+        val token = PairedLaunch.arm(partner, targetPkg, paired = fire, timeout = {
             DiagnosticLog.w(TAG, "pair TTL expired ($partner never confirmed) — firing anyway")
             fire()
         })
@@ -193,7 +195,7 @@ class AppLauncher(
             DiagnosticLog.i(TAG, "repair fire $musicPkg adjacent=$adjacent — ${SplitScreen.stateForDiagnostics()}")
             startSilently(launch)
         }
-        val token = SplitRepair.arm(navPkg, fire)
+        val token = SplitRepair.arm(navPkg, musicPkg, fire)
         handler.postDelayed({ SplitRepair.expire(token) }, SplitRepair.WATCH_WINDOW_MS)
         DiagnosticLog.i(TAG, "repair armed: rebuild $navPkg|$musicPkg once navigation settles — ${SplitScreen.stateForDiagnostics()}")
     }

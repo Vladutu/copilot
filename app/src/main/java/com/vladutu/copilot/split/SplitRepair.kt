@@ -34,16 +34,19 @@ object SplitRepair {
     const val MAX_ATTEMPTS = 3
 
     private var navPkg: String? = null
+    private var musicPkg: String? = null
     private var fire: (() -> Unit)? = null
     private var attemptsLeft = 0
     private var generation = 0
 
     /** Arm (or re-arm, replacing any previous watch) for [nav]. [onRepair] launches the
-     *  music partner adjacent; the service invokes it via [takeAttempt] once the split
-     *  toggle is engaged. Returns a token for [expire] so a stale expiry timer left over
-     *  from an earlier destination can never kill a newer watch. */
-    fun arm(nav: String, onRepair: () -> Unit): Int {
+     *  [music] partner adjacent; the service invokes it via [takeAttempt] once the split
+     *  toggle is engaged (or the scaffold path replaces it). Returns a token for [expire]
+     *  so a stale expiry timer left over from an earlier destination can never kill a
+     *  newer watch. */
+    fun arm(nav: String, music: String, onRepair: () -> Unit): Int {
         navPkg = nav
+        musicPkg = music
         fire = onRepair
         attemptsLeft = MAX_ATTEMPTS
         return ++generation
@@ -51,6 +54,9 @@ object SplitRepair {
 
     /** The nav package being watched, or null when idle. */
     fun pendingNav(): String? = navPkg
+
+    /** The music app the repair re-attaches — the scaffold-fill's awaited window. */
+    fun pendingMusic(): String? = musicPkg
 
     /** Consume one repair attempt and return the music re-attach continuation, or null when
      *  idle. Clears the watch after the last attempt. */
@@ -72,6 +78,7 @@ object SplitRepair {
 
     fun clear() {
         navPkg = null
+        musicPkg = null
         fire = null
         attemptsLeft = 0
     }

@@ -33,14 +33,18 @@ object PairedLaunch {
     const val REVEAL_TTL_MS = 1_500L
 
     private var partnerPkg: String? = null
+    private var targetPkg: String? = null
     private var onPaired: (() -> Unit)? = null
     private var onTimeout: (() -> Unit)? = null
     private var generation = 0
 
-    /** Arm the pair. Returns a token for [takeTimeout] so a stale TTL timer left over from
-     *  an earlier arm can never fire a newer one's fallback early. */
-    fun arm(partner: String, paired: () -> Unit, timeout: () -> Unit): Int {
+    /** Arm the pair. [target] is the app the deep link is for — the service needs it to arm
+     *  the scaffold fill when the split toggle is refused. Returns a token for [takeTimeout]
+     *  so a stale TTL timer left over from an earlier arm can never fire a newer one's
+     *  fallback early. */
+    fun arm(partner: String, target: String, paired: () -> Unit, timeout: () -> Unit): Int {
         partnerPkg = partner
+        targetPkg = target
         onPaired = paired
         onTimeout = timeout
         return ++generation
@@ -50,6 +54,10 @@ object PairedLaunch {
      *  awaited partner against its window snapshot (visibility, not event package: a split
      *  resurfacing may only emit events for its focused half). */
     fun pendingPartner(): String? = partnerPkg
+
+    /** The deep link's target app for the pending arm (read before [matchPartnerShown]
+     *  consumes the arm), or null when idle. */
+    fun pendingTarget(): String? = targetPkg
 
     /** The adjacent-launch continuation when [pkg] is the awaited partner, else null.
      *  Consuming it disarms the pair (the TTL fallback becomes a no-op). */
@@ -70,6 +78,7 @@ object PairedLaunch {
 
     fun clear() {
         partnerPkg = null
+        targetPkg = null
         onPaired = null
         onTimeout = null
     }

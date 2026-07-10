@@ -14,13 +14,15 @@ class SplitRepairTest {
 
     @Test fun `idle - nothing pending, no attempt handed out`() {
         assertNull(SplitRepair.pendingNav())
+        assertNull(SplitRepair.pendingMusic())
         assertNull(SplitRepair.takeAttempt())
     }
 
-    @Test fun `armed - exposes the nav package and keeps watching after an attempt`() {
+    @Test fun `armed - exposes both packages and keeps watching after an attempt`() {
         var fired = 0
-        SplitRepair.arm(WAZE) { fired++ }
+        SplitRepair.arm(WAZE, YTM) { fired++ }
         assertEquals(WAZE, SplitRepair.pendingNav())
+        assertEquals(YTM, SplitRepair.pendingMusic())
         SplitRepair.takeAttempt()!!.invoke()
         assertEquals(1, fired)
         // Attempts remain: a repair that landed on the confirm screen gets collapsed by
@@ -29,35 +31,37 @@ class SplitRepairTest {
     }
 
     @Test fun `clears after the last attempt`() {
-        SplitRepair.arm(WAZE) {}
+        SplitRepair.arm(WAZE, YTM) {}
         repeat(SplitRepair.MAX_ATTEMPTS) { assertTrue(SplitRepair.takeAttempt() != null) }
         assertNull(SplitRepair.pendingNav())
+        assertNull(SplitRepair.pendingMusic())
         assertNull(SplitRepair.takeAttempt())
     }
 
     @Test fun `expire ends the watch`() {
-        val token = SplitRepair.arm(WAZE) {}
+        val token = SplitRepair.arm(WAZE, YTM) {}
         SplitRepair.expire(token)
         assertNull(SplitRepair.pendingNav())
         assertNull(SplitRepair.takeAttempt())
     }
 
     @Test fun `stale expiry token does not kill a newer watch`() {
-        val old = SplitRepair.arm(WAZE) {}
-        SplitRepair.arm(MAPS) {}
+        val old = SplitRepair.arm(WAZE, YTM) {}
+        SplitRepair.arm(MAPS, YTM) {}
         SplitRepair.expire(old)
         assertEquals(MAPS, SplitRepair.pendingNav())
     }
 
     @Test fun `re-arm resets the attempt budget`() {
-        SplitRepair.arm(WAZE) {}
+        SplitRepair.arm(WAZE, YTM) {}
         SplitRepair.takeAttempt()
-        SplitRepair.arm(WAZE) {}
+        SplitRepair.arm(WAZE, YTM) {}
         repeat(SplitRepair.MAX_ATTEMPTS) { assertTrue(SplitRepair.takeAttempt() != null) }
     }
 
     private companion object {
         const val WAZE = SplitScreen.WAZE_PKG
         const val MAPS = SplitScreen.MAPS_PKG
+        const val YTM = SplitScreen.YT_MUSIC_PKG
     }
 }

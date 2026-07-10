@@ -18,7 +18,15 @@ class PairedLaunchTest {
     }
 
     private fun arm(partner: String = WAZE): Int =
-        PairedLaunch.arm(partner, paired = { pairedFired++ }, timeout = { timeoutFired++ })
+        PairedLaunch.arm(partner, target = YTM, paired = { pairedFired++ }, timeout = { timeoutFired++ })
+
+    @Test fun `pendingTarget exposes the deep link's app and clears on consume`() {
+        assertNull(PairedLaunch.pendingTarget())
+        arm()
+        assertEquals(YTM, PairedLaunch.pendingTarget())
+        PairedLaunch.matchPartnerShown(WAZE)
+        assertNull(PairedLaunch.pendingTarget())
+    }
 
     @Test fun `partner shown hands out the paired continuation exactly once`() {
         arm()
