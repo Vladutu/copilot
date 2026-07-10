@@ -437,7 +437,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         }
 
         composable("logs") {
-            LogsScreen(onBack = { nav.popBackStack() })
+            LogsScreen(uploader = app.locator.logUploader, onBack = { nav.popBackStack() })
         }
     }
     }

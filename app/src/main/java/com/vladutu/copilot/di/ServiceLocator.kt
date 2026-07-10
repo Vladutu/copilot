@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.vladutu.copilot.bubble.BubblePositionStore
 import com.vladutu.copilot.discover.CategoryStore
 import com.vladutu.copilot.discover.DiscoverRepository
+import com.vladutu.copilot.diagnostics.LogUploader
 import com.vladutu.copilot.discover.newpipe.NewPipeMusicSearcher
 import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.HistoryRepository
@@ -49,6 +50,8 @@ class ServiceLocator(private val appContext: Context) {
     }
 
     val settingsStore: SettingsStore by lazy { SettingsStore(appContext.settingsDataStore) }
+
+    val logUploader: LogUploader by lazy { LogUploader(okHttp) }
 
     val discoverRepository: DiscoverRepository by lazy {
         // The only line that names the search backend (spec: containment boundary —

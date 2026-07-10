@@ -1,8 +1,6 @@
 package com.vladutu.copilot.ui.settings
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -51,13 +49,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.GlowDefaults
+import com.vladutu.copilot.ui.qrBitmap
 import com.vladutu.copilot.ui.permissions.PermissionHelpers
 import com.vladutu.copilot.ui.theme.AllThemes
 import com.vladutu.copilot.ui.theme.LayoutMode
@@ -531,18 +528,4 @@ private fun SliderRow(
             }
         }
     }
-}
-
-/** Renders [content] (the pilot://pair URI) as a square QR [Bitmap] of [sizePx]. */
-private fun qrBitmap(content: String, sizePx: Int): Bitmap {
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, sizePx, sizePx)
-    val w = matrix.width
-    val h = matrix.height
-    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
-    for (x in 0 until w) {
-        for (y in 0 until h) {
-            bmp.setPixel(x, y, if (matrix.get(x, y)) AndroidColor.BLACK else AndroidColor.WHITE)
-        }
-    }
-    return bmp
 }
