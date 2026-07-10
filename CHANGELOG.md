@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.24.0] - 2026-07-10
+
+### Added
+- Share log via 72h upload + on-screen QR
+
 ## [0.23.7] - 2026-07-10
 
 ### Added
@@ -358,6 +363,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.24.0]: https://github.com/Vladutu/copilot/compare/v0.23.7...v0.24.0
 [0.23.7]: https://github.com/Vladutu/copilot/compare/v0.23.6...v0.23.7
 [0.23.6]: https://github.com/Vladutu/copilot/compare/v0.23.5...v0.23.6
 [0.23.5]: https://github.com/Vladutu/copilot/compare/v0.23.4...v0.23.5
