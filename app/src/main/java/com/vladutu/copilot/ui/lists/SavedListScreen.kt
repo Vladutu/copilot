@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
@@ -49,8 +52,11 @@ fun SavedListScreen(
     onTap: (SavedItem) -> Unit,
     onDelete: (SavedItem) -> Unit,
     onBack: () -> Unit,
+    // Non-null adds a whole-list Clear button in the header (currently Songs only).
+    onClearAll: (() -> Unit)? = null,
 ) {
     var pendingDelete by remember { mutableStateOf<SavedItem?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
     // Position count shown flush-right in the header (e.g. "1–5 / 24"); driven by the rail.
     var rangeText by remember { mutableStateOf<String?>(null) }
     val title = when (form) {
@@ -74,13 +80,30 @@ fun SavedListScreen(
         ScreenHeader(
             title = title,
             onBack = onBack,
-            trailing = if (items.isNotEmpty() && rangeText != null) {
+            trailing = if (items.isNotEmpty() && (rangeText != null || onClearAll != null)) {
                 {
-                    Text(
-                        text = rangeText!!,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        rangeText?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (onClearAll != null) {
+                            OutlinedButton(
+                                onClick = { confirmClear = true },
+                                // Touch-only chrome, same as BackHomeButton: the knob
+                                // must never land here instead of on a tile.
+                                modifier = Modifier.focusProperties { canFocus = false },
+                            ) {
+                                Text(stringResource(R.string.clear_list))
+                            }
+                        }
+                    }
                 }
             } else null,
         )
@@ -110,6 +133,24 @@ fun SavedListScreen(
         }
 
         NowPlayingStrip(nowPlaying = nowPlaying)
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.clear_songs_title)) },
+            text = { Text(stringResource(R.string.clear_songs_message)) },
+            confirmButton = {
+                TextButton(onClick = { onClearAll?.invoke(); confirmClear = false }) {
+                    Text(stringResource(R.string.confirm_delete_yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) {
+                    Text(stringResource(R.string.confirm_delete_no))
+                }
+            },
+        )
     }
 
     pendingDelete?.let { target ->

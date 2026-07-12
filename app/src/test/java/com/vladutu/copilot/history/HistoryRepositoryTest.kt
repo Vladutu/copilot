@@ -112,6 +112,20 @@ class HistoryRepositoryTest {
         assertTrue(list.isEmpty())
     }
 
+    @Test fun `clearAll empties only the matching form`() = runTest {
+        repo.save(item(Form.SONG, "a", 100L))
+        repo.save(item(Form.SONG, "b", 200L))
+        repo.save(item(Form.PLAYLIST, "c", 100L))
+        repo.clearAll(Form.SONG)
+        assertTrue(repo.itemsFor(Form.SONG).first().isEmpty())
+        assertEquals(listOf("c"), repo.itemsFor(Form.PLAYLIST).first().map { it.id })
+    }
+
+    @Test fun `clearAll on empty form is a no-op`() = runTest {
+        repo.clearAll(Form.SONG)
+        assertTrue(repo.itemsFor(Form.SONG).first().isEmpty())
+    }
+
     @Test fun `forms are isolated`() = runTest {
         repo.save(item(Form.PLAYLIST, "a", 100L))
         repo.save(item(Form.SONG, "b", 100L))

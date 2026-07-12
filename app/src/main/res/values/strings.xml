@@ -43,6 +43,9 @@
     <string name="clear_all">Clear all</string>
     <string name="clear_all_title">Clear liked songs?</string>
     <string name="clear_all_message">This removes every song from your Liked list.</string>
+    <string name="clear_list">Clear</string>
+    <string name="clear_songs_title">Clear songs?</string>
+    <string name="clear_songs_message">This removes every song from the list.</string>
     <string name="settings_permissions_label">Permissions</string>
     <string name="settings_now_playing_access">Now-playing access</string>
     <string name="settings_auto_return">Auto-return (accessibility)</string>

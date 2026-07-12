@@ -35,4 +35,8 @@ class HistoryRepository(
     suspend fun delete(form: Form, id: String) = mutex.withLock {
         store.mutate(form) { current -> current.filterNot { it.id == id } }
     }
+
+    suspend fun clearAll(form: Form) = mutex.withLock {
+        store.mutate(form) { emptyList() }
+    }
 }

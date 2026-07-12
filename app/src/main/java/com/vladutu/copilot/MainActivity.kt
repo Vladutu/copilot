@@ -306,6 +306,13 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                     }
                 },
                 onBack = { nav.popBackStack() },
+                onClearAll = if (form == Form.SONG) {
+                    {
+                        app.applicationScope.launch {
+                            app.locator.historyRepository.clearAll(Form.SONG)
+                        }
+                    }
+                } else null,
             )
         }
 
