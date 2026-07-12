@@ -200,7 +200,19 @@ class BackGrabberService : AccessibilityService() {
             if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
             val root = window.root ?: continue
             if (root.packageName?.toString() != SplitScreen.WAZE_PKG) continue
-            if (findGoNode(root, label) != null) return true
+            // Visible matches only: while navigating, the collapsed ETA drawer keeps an
+            // off-screen "Go now" node in the tree (emulator-verified 2026-07-12), which
+            // stalled the repair as a phantom confirm screen.
+            val node = findGoNode(root, label, requireVisible = true) ?: continue
+            // Dump what matched so the log tells a false positive from the genuine
+            // confirm screen.
+            val bounds = Rect().also { node.getBoundsInScreen(it) }
+            DiagnosticLog.i(
+                TAG,
+                "confirm guard: '$label' matched text='${node.text}' desc='${node.contentDescription}' " +
+                    "clickable=${node.isClickable} bounds=$bounds — ${describeNodes(root)}",
+            )
+            return true
         }
         return false
     }
@@ -539,13 +551,21 @@ class BackGrabberService : AccessibilityService() {
         return true
     }
 
-    /** Breadth-first search for the first node whose text/contentDescription matches [label]. */
-    private fun findGoNode(root: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? {
+    /** Breadth-first search for the first node whose text/contentDescription matches [label].
+     *  [requireVisible] additionally demands [AccessibilityNodeInfo.isVisibleToUser] — the
+     *  confirm guard needs it, the knob tap doesn't (the user presses while looking at it). */
+    private fun findGoNode(
+        root: AccessibilityNodeInfo,
+        label: String,
+        requireVisible: Boolean = false,
+    ): AccessibilityNodeInfo? {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         while (queue.isNotEmpty()) {
             val node = queue.removeFirst()
-            if (GoNodeMatcher.matches(label, node.text?.toString(), node.contentDescription?.toString())) {
+            if (GoNodeMatcher.matches(label, node.text?.toString(), node.contentDescription?.toString()) &&
+                (!requireVisible || node.isVisibleToUser)
+            ) {
                 return node
             }
             for (i in 0 until node.childCount) {
