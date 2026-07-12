@@ -34,7 +34,7 @@ class LogUploader(private val client: OkHttpClient) {
         val request = Request.Builder().url(UPLOAD_URL).post(body).build()
         try {
             client.newCall(request).execute().use { response ->
-                val text = response.body?.string()?.trim().orEmpty()
+                val text = response.body.string().trim()
                 // Success is a bare URL in the body; anything else is an error page.
                 if (!response.isSuccessful || !text.startsWith("https://")) {
                     throw IOException("upload failed: HTTP ${response.code} '${text.take(120)}'")
