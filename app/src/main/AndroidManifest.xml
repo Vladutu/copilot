@@ -5,6 +5,8 @@
         <package android:name="com.waze" />
         <package android:name="com.google.android.apps.maps" />
         <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.soundcloud.android" />
         <package android:name="org.videolan.vlc" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
