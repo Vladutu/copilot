@@ -52,6 +52,14 @@ class AutoSwitchBackTest {
         assertNull(AutoSwitchBack.resolveTargetAtFire())
     }
 
+    @Test fun `arm with youtube in foreground yields no target`() {
+        AutoSwitchBack.onForeground(AutoSwitchBack.YOUTUBE_PKG)
+        AutoSwitchBack.arm()
+        assertTrue(AutoSwitchBack.isArmed())
+        assertFalse(AutoSwitchBack.shouldScheduleOnMusicAppShown())
+        assertNull(AutoSwitchBack.resolveTargetAtFire())
+    }
+
     @Test fun `soundcloud coming up does not count as user moving away`() {
         AutoSwitchBack.onForeground("com.vladutu.copilot")
         AutoSwitchBack.arm()

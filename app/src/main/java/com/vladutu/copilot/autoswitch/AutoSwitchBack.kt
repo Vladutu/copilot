@@ -22,9 +22,12 @@ object AutoSwitchBack {
 
     const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
     const val SOUNDCLOUD_PKG = "com.soundcloud.android"
+    const val YOUTUBE_PKG = "com.google.android.youtube"
 
-    /** The launchable music apps this coordinator returns from. */
-    val MUSIC_PKGS = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG)
+    /** The media apps we launch deep links into. YouTube is here for the shared consumers
+     *  (now-playing strip, moved-away checks) even though a youtube launch never arms this
+     *  coordinator — a video is watched in the foreground, so there is nothing to return from. */
+    val MUSIC_PKGS = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG)
 
     /** Delay after the music app's window appears before we pull focus back, giving it
      *  time to process the deep link and start playback (mirrors Waze deep-link timing). */

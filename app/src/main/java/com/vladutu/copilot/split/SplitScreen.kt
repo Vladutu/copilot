@@ -34,13 +34,14 @@ object SplitScreen {
     const val MAPS_PKG = "com.google.android.apps.maps"
     const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
     const val SOUNDCLOUD_PKG = "com.soundcloud.android"
+    const val YOUTUBE_PKG = "com.google.android.youtube"
     const val VLC_PKG = "org.videolan.vlc"
 
     /** Nav apps: the pane a music launch pairs against. */
     val NAV_PKGS = setOf(WAZE_PKG, MAPS_PKG)
 
-    /** Apps a from-Copilot launch may two-step pair with a nav app (music side of the split). */
-    val PAIRS_WITH_NAV = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, VLC_PKG)
+    /** Apps a from-Copilot launch may two-step pair with a nav app (media side of the split). */
+    val PAIRS_WITH_NAV = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG, VLC_PKG)
 
     /** Mirrors the Settings "split screen" toggle; kept current by CopilotApp. Defaults off:
      *  every launch stays fullscreen until the driver opts in. */

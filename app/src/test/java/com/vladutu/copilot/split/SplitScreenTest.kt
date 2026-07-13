@@ -117,12 +117,25 @@ class SplitScreenTest {
         assertNull(SplitScreen.repairNavFor(SplitScreen.SOUNDCLOUD_PKG))
     }
 
+    @Test fun `youtube target repairs around the last seen nav app`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(WAZE)
+        SplitScreen.onWindows(visible = setOf(COPILOT), focused = COPILOT)
+        assertEquals(WAZE, SplitScreen.repairNavFor(YOUTUBE))
+    }
+
     // repairMusicFor (the music app to re-attach after a destination delivery)
 
     @Test fun `nav target repairs with the last music app (destination while a song plays)`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(YTM)
         assertEquals(YTM, SplitScreen.repairMusicFor(WAZE))
+    }
+
+    @Test fun `nav target repairs with youtube when it was the last media app`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(YOUTUBE)
+        assertEquals(YOUTUBE, SplitScreen.repairMusicFor(WAZE))
     }
 
     @Test fun `nav target without a music sighting has nothing to repair`() {
@@ -183,5 +196,6 @@ class SplitScreenTest {
         const val WAZE = SplitScreen.WAZE_PKG
         const val MAPS = SplitScreen.MAPS_PKG
         const val YTM = SplitScreen.YT_MUSIC_PKG
+        const val YOUTUBE = SplitScreen.YOUTUBE_PKG
     }
 }

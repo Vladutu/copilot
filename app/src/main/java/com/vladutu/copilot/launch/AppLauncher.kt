@@ -69,6 +69,7 @@ class AppLauncher(
         // route the URL; for ytmusic/waze we pin the package to prevent a browser fallback.
         val targetPkg: String? = when (cmd) {
             "ytmusic" -> YT_MUSIC_PKG
+            "youtube" -> YOUTUBE_PKG
             "soundcloud" -> SOUNDCLOUD_PKG
             "waze" -> WAZE_PKG
             "maps" -> null
@@ -76,6 +77,7 @@ class AppLauncher(
         }
         val missingMsg = when (cmd) {
             "ytmusic" -> "YouTube Music not installed"
+            "youtube" -> "YouTube not installed"
             "soundcloud" -> "SoundCloud not installed"
             "waze" -> "Waze not installed"
             "maps" -> "Google Maps not installed"
@@ -97,7 +99,8 @@ class AppLauncher(
 
         // Auto-return only for song/playlist launches that take over the foreground (YT Music
         // or SoundCloud; cmds imply form SONG/PLAYLIST via Message validation). Radio (VLC,
-        // background) and maps/waze (nav stays foreground) are deliberately not armed.
+        // background), maps/waze (nav stays foreground) and youtube (a video is watched, not
+        // background-listened) are deliberately not armed.
         return dispatch(intent, policyPkg, missingMsg, armAutoSwitch = cmd == "ytmusic" || cmd == "soundcloud")
     }
 
@@ -224,6 +227,7 @@ class AppLauncher(
     companion object {
         const val TAG = "AppLauncher"
         const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
+        const val YOUTUBE_PKG = "com.google.android.youtube"
         const val SOUNDCLOUD_PKG = "com.soundcloud.android"
         const val WAZE_PKG = "com.waze"
         const val MAPS_PKG = "com.google.android.apps.maps"

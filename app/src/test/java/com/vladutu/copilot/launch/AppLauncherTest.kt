@@ -311,4 +311,50 @@ class AppLauncherTest {
         launcher.launch(msg("radio", Form.RADIO, "https://live.example.ro/europafm.mp3"))
         assertFalse(AutoSwitchBack.isArmed())
     }
+
+    @Test fun `launches youtube message with pinned package`() {
+        val res = launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YOUTUBE_PKG, intent.`package`)
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", intent.data.toString())
+    }
+
+    @Test fun `replays youtube SavedItem via stored cmd not form`() {
+        // form=SONG would map to ytmusic for legacy rows; the stored cmd must win.
+        val item = SavedItem(
+            form = Form.SONG, id = "dQw4w9WgXcQ", title = "T", imageUrl = null,
+            url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ", cmd = "youtube", savedAt = 0,
+        )
+        val res = launcher.replay(item)
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YOUTUBE_PKG, intent.`package`)
+    }
+
+    @Test fun `does not arm autoswitch for youtube launch`() {
+        // A video is watched in the foreground, unlike music that plays in the background.
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        assertFalse(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `youtube launch does not touch the soundcloud session`() {
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        assertEquals(0, pauser.pauseCalls)
+    }
+
+    @Test fun `split toggle on - youtube command over fullscreen nav goes plain and arms the repair`() {
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
+        SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertEquals(AppLauncher.YOUTUBE_PKG, SplitRepair.pendingMusic())
+    }
 }

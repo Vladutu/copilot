@@ -226,4 +226,34 @@ class MessageTest {
         assertTrue(res is ParseResult.Rejected)
         assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
     }
+
+    // --- YouTube (plain, not YT Music) ---
+
+    @Test fun `accepts youtube song`() {
+        val body = """{"v":3,"ts":$now,"cmd":"youtube","form":"song","url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","title":"T"}"""
+        val res = Message.parseEnvelope(envelope(body), nowSec = now, maxAgeSec = maxAge)
+        assertTrue(res is ParseResult.Accepted)
+        val msg = (res as ParseResult.Accepted).message
+        assertEquals("youtube", msg.cmd)
+        assertEquals(Form.SONG, msg.form)
+    }
+
+    @Test fun `accepts youtube playlist`() {
+        val body = """{"v":3,"ts":$now,"cmd":"youtube","form":"playlist","url":"https://www.youtube.com/playlist?list=PLabc"}"""
+        assertTrue(Message.parseEnvelope(envelope(body), now, maxAge) is ParseResult.Accepted)
+    }
+
+    @Test fun `rejects youtube with untrusted host`() {
+        val body = """{"v":3,"ts":$now,"cmd":"youtube","form":"song","url":"https://music.youtube.com/watch?v=abc"}"""
+        val res = Message.parseEnvelope(envelope(body), now, maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("untrusted host", (res as ParseResult.Rejected).reason)
+    }
+
+    @Test fun `rejects youtube with destination form`() {
+        val body = """{"v":3,"ts":$now,"cmd":"youtube","form":"destination","url":"https://www.youtube.com/watch?v=abc"}"""
+        val res = Message.parseEnvelope(envelope(body), now, maxAge)
+        assertTrue(res is ParseResult.Rejected)
+        assertEquals("cmd/form mismatch", (res as ParseResult.Rejected).reason)
+    }
 }

@@ -12,7 +12,7 @@ data class SavedItem(
     val title: String?,
     val imageUrl: String?,
     val url: String,
-    /** Producing cmd ("ytmusic", "soundcloud", "waze", "radio"). Null = legacy row; replay derives from form. */
+    /** Producing cmd ("ytmusic", "youtube", "soundcloud", "waze", "radio"). Null = legacy row; replay derives from form. */
     val cmd: String? = null,
     val savedAt: Long,
 ) {

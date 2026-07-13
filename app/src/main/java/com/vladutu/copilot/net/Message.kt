@@ -17,10 +17,14 @@ data class Message(
     companion object {
         private const val SCHEMA_VERSION = 3
 
-        private val KNOWN_CMDS = setOf("ytmusic", "waze", "maps", "radio", "soundcloud")
+        private val KNOWN_CMDS = setOf("ytmusic", "youtube", "waze", "maps", "radio", "soundcloud")
 
         private val YT_MUSIC_ALLOWED_PREFIXES = listOf(
             "https://music.youtube.com/",
+        )
+        // Pilot normalizes every plain-YouTube share (youtu.be, m.youtube.com, ...) to www.youtube.com.
+        private val YOUTUBE_ALLOWED_PREFIXES = listOf(
+            "https://www.youtube.com/",
         )
         private val WAZE_ALLOWED_PREFIXES = listOf(
             "https://ul.waze.com/",
@@ -80,7 +84,7 @@ data class Message(
                 ?: return ParseResult.Rejected("unknown form", skew)
 
             val cmdFormConsistent = when (cmd) {
-                "ytmusic", "soundcloud" -> form == Form.PLAYLIST || form == Form.SONG
+                "ytmusic", "youtube", "soundcloud" -> form == Form.PLAYLIST || form == Form.SONG
                 "waze", "maps" -> form == Form.DESTINATION
                 "radio" -> form == Form.RADIO
                 else -> false
@@ -100,6 +104,7 @@ data class Message(
             } else {
                 val allowedPrefixes = when (cmd) {
                     "ytmusic" -> YT_MUSIC_ALLOWED_PREFIXES
+                    "youtube" -> YOUTUBE_ALLOWED_PREFIXES
                     "waze" -> WAZE_ALLOWED_PREFIXES
                     "maps" -> MAPS_ALLOWED_PREFIXES
                     "soundcloud" -> SOUNDCLOUD_ALLOWED_PREFIXES

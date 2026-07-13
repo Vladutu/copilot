@@ -125,6 +125,7 @@ class ListenerService : Service() {
                     val ok = outcome is AppLauncher.Result.Ok
                     val label = when (msg.cmd) {
                         "ytmusic" -> "play"
+                        "youtube" -> "watch"
                         "waze", "maps" -> "navigate"
                         "radio" -> "listen"
                         else -> msg.cmd
