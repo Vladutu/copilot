@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.26.1] - 2026-07-13
+
+### Fixed
+- Declare YouTube and SoundCloud in manifest queries
+
 ## [0.26.0] - 2026-07-13
 
 ### Added
@@ -386,6 +391,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.26.1]: https://github.com/Vladutu/copilot/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/Vladutu/copilot/compare/v0.25.2...v0.26.0
 [0.25.2]: https://github.com/Vladutu/copilot/compare/v0.25.1...v0.25.2
 [0.25.1]: https://github.com/Vladutu/copilot/compare/v0.25.0...v0.25.1
