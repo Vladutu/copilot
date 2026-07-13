@@ -172,7 +172,7 @@ private fun ShareDialogTexts(url: String) {
         fontSize = 16.sp,
     )
     Text(
-        text = "Link expires in ${LogUploader.RETENTION.removeSuffix("h")} hours",
+        text = "Link expires in ${LogUploader.RETENTION_DAYS} days",
         style = MaterialTheme.typography.bodySmall,
     )
 }
