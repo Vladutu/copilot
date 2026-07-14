@@ -115,8 +115,11 @@ class AppLauncher(
      *    navigation has settled;
      *  - music command with a nav app known this drive: plain (the song starts right
      *    away), then repair brings the nav app up and pulls the music task adjacent.
-     * Auto-return is not armed when a repair is: the command's end state is the split, so
-     * pulling the arm-time foreground back on top would fight the reconciler.
+     * Auto-return is not armed when a rebuild repair is: the command's end state is the
+     * split, so pulling the arm-time foreground back on top would fight the reconciler.
+     * The one place both are armed is the live-split delivery, where the repair is only a
+     * safety net (it fires solely when the delivery bounced the target out of the split
+     * and left it alone in the foreground — the case auto-return never schedules for).
      */
     private fun dispatch(intent: Intent, targetPkg: String, missingMsg: String, armAutoSwitch: Boolean): Result {
         // A new command supersedes any pending rebuild or scaffold fill: a stale stage
@@ -130,7 +133,15 @@ class AppLauncher(
             return result
         }
         if (SplitScreen.isSplitActive()) {
-            return startDirect(intent, targetPkg, missingMsg, armAutoSwitch)
+            val result = startDirect(intent, targetPkg, missingMsg, armAutoSwitch)
+            // Safety net (carbox log 2026-07-14): a deep link delivered plain into the pane
+            // the target already owns can bounce its task out to fullscreen (YouTube),
+            // dissolving the split. Arm the repair so the reconciler re-converges; when the
+            // split survives the delivery, neither app ever settles alone and the watch
+            // expires without firing.
+            val nav = SplitScreen.liveSplitNav(targetPkg)
+            if (result is Result.Ok && nav != null) armRepair(nav, targetPkg)
+            return result
         }
         val nav = SplitScreen.repairNavFor(targetPkg)
         if (nav != null) {

@@ -167,7 +167,7 @@ class AppLauncherTest {
         assertEquals(AppLauncher.YT_MUSIC_PKG, SplitRepair.pendingMusic())
     }
 
-    @Test fun `split toggle on - music command into a live split delivers adjacent into its pane`() {
+    @Test fun `split toggle on - music command into a live split delivers adjacent and arms the safety net`() {
         SplitScreen.enabled = true
         SplitScreen.onWindows(
             visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YT_MUSIC_PKG),
@@ -176,6 +176,34 @@ class AppLauncherTest {
         launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
         val intent = shadowOf(context as android.app.Application).nextStartedActivity
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT != 0)
+        // Safety net: if the delivery bounces the target out of the split, the repair
+        // re-converges; if the split survives, the watch expires without firing.
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertEquals(AppLauncher.YT_MUSIC_PKG, SplitRepair.pendingMusic())
+    }
+
+    @Test fun `live split with the video focused - plain in-place delivery arms the safety net`() {
+        // The carbox case behind the fix: a new video while the previous one holds the
+        // focused pane is delivered plain in place, and YouTube bounces out to fullscreen.
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.WAZE_PKG, AppLauncher.YOUTUBE_PKG),
+            focused = AppLauncher.YOUTUBE_PKG,
+        )
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT == 0)
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertEquals(AppLauncher.YOUTUBE_PKG, SplitRepair.pendingMusic())
+    }
+
+    @Test fun `live split without a nav app does not arm the safety net`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(
+            visible = setOf(AppLauncher.YT_MUSIC_PKG, AppLauncher.YOUTUBE_PKG),
+            focused = AppLauncher.YT_MUSIC_PKG,
+        )
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
         assertNull(SplitRepair.pendingNav())
     }
 

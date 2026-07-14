@@ -138,6 +138,25 @@ class SplitScreenTest {
         assertEquals(YOUTUBE, SplitScreen.repairMusicFor(WAZE))
     }
 
+    // liveSplitNav (the safety-net repair partner for deliveries into a live split)
+
+    @Test fun `live split exposes its visible nav app as the safety-net partner`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(WAZE, YOUTUBE), focused = YOUTUBE)
+        assertEquals(WAZE, SplitScreen.liveSplitNav(YOUTUBE))
+    }
+
+    @Test fun `live split without a nav app has no safety-net partner`() {
+        SplitScreen.enabled = true
+        SplitScreen.onWindows(visible = setOf(YTM, YOUTUBE), focused = YOUTUBE)
+        assertNull(SplitScreen.liveSplitNav(YOUTUBE))
+    }
+
+    @Test fun `no safety-net partner when disabled`() {
+        SplitScreen.onWindows(visible = setOf(WAZE, YOUTUBE), focused = YOUTUBE)
+        assertNull(SplitScreen.liveSplitNav(YOUTUBE))
+    }
+
     @Test fun `nav target without a music sighting has nothing to repair`() {
         SplitScreen.enabled = true
         SplitScreen.onForeground(WAZE)

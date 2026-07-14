@@ -120,6 +120,18 @@ object SplitScreen {
     }
 
     /**
+     * The nav app sharing the live split with [targetPkg], or null when the toggle is off
+     * or no nav app is on screen. Partner for the safety-net repair armed after a delivery
+     * into a live split: a deep link into the pane the target already owns can bounce its
+     * task out to fullscreen (YouTube on the carbox), and the repair re-converges; when the
+     * split survives, neither app ever settles alone and the watch expires without firing.
+     */
+    fun liveSplitNav(targetPkg: String): String? {
+        if (!enabled) return null
+        return visiblePackages.firstOrNull { it in NAV_PKGS && it != targetPkg }
+    }
+
+    /**
      * The music app [SplitRepair] should re-attach after a destination launch of [targetPkg],
      * or null when there's nothing to rebuild (toggle off, not a nav target, no music app
      * seen this drive). Deliberately ignores what's currently visible: even a live music
