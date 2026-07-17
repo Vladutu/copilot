@@ -143,6 +143,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_WAZE_GO_LABEL] = label }
     }
 
+    /** Speech-recognition language for the Discover voice tile (see [VoiceLanguages]). */
+    val voiceLanguageFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_VOICE_LANGUAGE] ?: VoiceLanguages.SYSTEM_ID
+    }
+
+    suspend fun setVoiceLanguage(id: String) {
+        dataStore.edit { prefs -> prefs[KEY_VOICE_LANGUAGE] = id }
+    }
+
     /** Null until [ensureTopic] (or [regenerateTopic]) has minted one. */
     val topicFlow: Flow<String?> = dataStore.data.map { prefs -> prefs[KEY_NTFY_TOPIC] }
 
@@ -181,5 +190,6 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_SPLIT_SCREEN = booleanPreferencesKey("split_screen_launches")
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
+        val KEY_VOICE_LANGUAGE = stringPreferencesKey("voice_language")
     }
 }

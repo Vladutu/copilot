@@ -38,6 +38,7 @@ import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.MediaListenerService
 import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.settings.VoiceLanguages
 import com.vladutu.copilot.ui.diagnostics.LogsScreen
 import com.vladutu.copilot.ui.discover.BrowseResultsScreen
 import com.vladutu.copilot.ui.discover.DiscoverScreen
@@ -130,28 +131,14 @@ class MainActivity : ComponentActivity() {
         BubbleController.onActivityPaused(this)
     }
 
-    // The BMW iDrive knob arrives via the carbox's CarPlay bridge as one set of
-    // events from device "gaei" (src=0x301). The system then re-injects a
-    // second, synthetic copy from a nameless device (src=0x101) for
-    // DPAD_CENTER / BACK / BUTTON_1 — without filtering, every knob press and
-    // every back press would fire twice. Drop the synthetic copy.
+    // Drop the carbox's synthetic knob-event copies (see KnobInput.kt — dialogs
+    // must re-apply the same filter themselves).
     // RestrictedApi is a lint false positive: androidx.core marks dispatchKeyEvent
     // @RestrictTo, but overriding it in an Activity is normal and supported.
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (isSyntheticDuplicate(event)) return true
+        if (isSyntheticKnobDuplicate(event)) return true
         return super.dispatchKeyEvent(event)
-    }
-
-    private fun isSyntheticDuplicate(event: KeyEvent): Boolean {
-        val hasNamedDevice = !event.device?.name.isNullOrEmpty()
-        if (hasNamedDevice) return false
-        return when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER,
-            KeyEvent.KEYCODE_BACK,
-            KeyEvent.KEYCODE_BUTTON_1 -> true
-            else -> false
-        }
     }
 
     private fun leaveToOtherApp() {
@@ -319,11 +306,17 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
         composable("discover") {
             val categories by app.locator.categoryStore.categories()
                 .collectAsStateWithLifecycle(emptyList())
+            val voiceLanguage by app.locator.settingsStore.voiceLanguageFlow
+                .collectAsStateWithLifecycle(initialValue = VoiceLanguages.SYSTEM_ID)
             DiscoverScreen(
                 categories = categories,
                 repository = app.locator.discoverRepository,
                 launcher = launcher,
+                voiceLanguage = voiceLanguage,
                 onBrowse = { keyword -> nav.navigate("discoverBrowse/${Uri.encode(keyword)}") },
+                onAdd = { keyword ->
+                    app.applicationScope.launch { app.locator.categoryStore.add(keyword) }
+                },
                 onDelete = { keyword ->
                     app.applicationScope.launch { app.locator.categoryStore.delete(keyword) }
                 },
@@ -367,6 +360,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = false)
             val splitScreen by app.locator.settingsStore.splitScreenFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val voiceLanguage by app.locator.settingsStore.voiceLanguageFlow
+                .collectAsStateWithLifecycle(initialValue = VoiceLanguages.SYSTEM_ID)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
                 .collectAsStateWithLifecycle(initialValue = true)
             val wazeGoLabel by app.locator.settingsStore.wazeGoLabelFlow
@@ -418,6 +413,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 listPageSize = listPageSize,
                 onListPageSizeChange = { tiles ->
                     app.applicationScope.launch { app.locator.settingsStore.setListPageSize(tiles) }
+                },
+                voiceLanguage = voiceLanguage,
+                onVoiceLanguageChange = { id ->
+                    app.applicationScope.launch { app.locator.settingsStore.setVoiceLanguage(id) }
                 },
                 wazeGoEnabled = wazeGoEnabled,
                 onWazeGoEnabledChange = { enabled ->

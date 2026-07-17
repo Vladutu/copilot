@@ -150,6 +150,15 @@ class SettingsStoreTest {
         assertEquals(LayoutMode.LANDSCAPE, store.layoutModeFlow.first())
     }
 
+    @Test fun `voice language defaults to system`() = runTest {
+        assertEquals(VoiceLanguages.SYSTEM_ID, store.voiceLanguageFlow.first())
+    }
+
+    @Test fun `setVoiceLanguage round-trips`() = runTest {
+        store.setVoiceLanguage("ro-RO")
+        assertEquals("ro-RO", store.voiceLanguageFlow.first())
+    }
+
     @Test fun `waze-go label defaults to Go now`() = runTest {
         assertEquals("Go now", store.wazeGoLabelFlow.first())
     }

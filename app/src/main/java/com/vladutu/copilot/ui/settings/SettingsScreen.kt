@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.R
 import com.vladutu.copilot.settings.PairingUri
+import com.vladutu.copilot.settings.VoiceLanguages
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.GlowDefaults
 import com.vladutu.copilot.ui.qrBitmap
@@ -94,6 +95,8 @@ fun SettingsScreen(
     onMenuPageSizeChange: (Int) -> Unit,
     listPageSize: Int,
     onListPageSizeChange: (Int) -> Unit,
+    voiceLanguage: String,
+    onVoiceLanguageChange: (String) -> Unit,
     wazeGoEnabled: Boolean,
     onWazeGoEnabledChange: (Boolean) -> Unit,
     wazeGoLabel: String,
@@ -200,6 +203,14 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_split_screen_label),
                 checked = splitScreen,
                 onCheckedChange = onSplitScreenChange,
+            )
+            // Language the Discover voice tile listens in — its own setting because the
+            // recognizer otherwise follows the device locale (the carbox runs English).
+            DropdownRow(
+                label = stringResource(R.string.settings_voice_language),
+                selectedLabel = VoiceLanguages.labelFor(voiceLanguage),
+                options = VoiceLanguages.options,
+                onSelect = onVoiceLanguageChange,
             )
         }
 
