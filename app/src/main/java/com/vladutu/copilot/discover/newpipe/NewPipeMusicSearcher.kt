@@ -41,7 +41,11 @@ class NewPipeMusicSearcher(private val okHttp: OkHttpClient) : MusicSearcher {
             items.filterIsInstance<StreamInfoItem>().mapNotNull { item ->
                 val id = queryParam(item.url, "v") ?: return@mapNotNull null
                 val name = item.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                FoundSong(videoId = id, title = name)
+                FoundSong(
+                    videoId = id,
+                    title = name,
+                    thumbnailUrl = item.thumbnails.maxByOrNull { it.width }?.url,
+                )
             }
         }
 

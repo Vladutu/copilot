@@ -28,6 +28,13 @@
     <string name="voice_listening">Listening…</string>
     <string name="voice_add_confirm">Add \"%1$s\"?</string>
     <string name="voice_add_yes">Add</string>
+    <string name="voice_searching">Searching \"%1$s\"…</string>
+    <string name="voice_resolve_failed">Search failed — try again</string>
+    <string name="voice_song_tile">Play by voice</string>
+    <string name="voice_song_title">Play by voice</string>
+    <string name="voice_play_confirm">Play \"%1$s\"?</string>
+    <string name="voice_play_yes">Play</string>
+    <string name="voice_song_not_found">No song found — try again</string>
     <string name="voice_error_no_match">Didn\'t catch that — try again</string>
     <string name="voice_error_generic">Speech recognition failed</string>
     <string name="voice_unavailable">No speech recognition on this device</string>

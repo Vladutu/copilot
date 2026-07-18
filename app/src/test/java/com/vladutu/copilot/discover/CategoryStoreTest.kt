@@ -52,6 +52,25 @@ class CategoryStoreTest {
         assertEquals(listOf("80s rock"), store.categories().first())
     }
 
+    @Test fun `add first prepends new keywords`() = runTest {
+        store.add("Workout")
+        store.add("Chill", first = true)
+        assertEquals(listOf("Chill", "Workout"), store.categories().first())
+    }
+
+    @Test fun `add first promotes an existing keyword keeping its casing`() = runTest {
+        store.add("Workout")
+        store.add("Chill")
+        store.add("CHILL", first = true)
+        assertEquals(listOf("Chill", "Workout"), store.categories().first())
+    }
+
+    @Test fun `add without first keeps appending`() = runTest {
+        store.add("Chill", first = true)
+        store.add("Workout")
+        assertEquals(listOf("Chill", "Workout"), store.categories().first())
+    }
+
     @Test fun `delete is case-insensitive`() = runTest {
         store.add("Workout")
         store.add("Chill")

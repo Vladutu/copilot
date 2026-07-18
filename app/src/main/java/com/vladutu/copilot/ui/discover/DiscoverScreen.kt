@@ -1,10 +1,6 @@
 package com.vladutu.copilot.ui.discover
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
@@ -42,7 +38,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.vladutu.copilot.R
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.discover.DiscoverRepository
@@ -56,6 +51,9 @@ import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import com.vladutu.copilot.ui.voice.VoiceDialog
+import com.vladutu.copilot.ui.voice.VoiceTarget
+import com.vladutu.copilot.ui.voice.rememberMicPermissionRequest
 import kotlinx.coroutines.launch
 
 /**
@@ -85,23 +83,8 @@ fun DiscoverScreen(
     // Resolved during composition (lint: LocalContextGetResourceValueCall) so the
     // text tracks configuration changes; the callback below only captures the value.
     val mixFailedText = stringResource(R.string.discover_mix_failed)
-    val micDeniedText = stringResource(R.string.voice_mic_denied)
 
-    val micPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            showVoice = true
-        } else {
-            Toast.makeText(context, micDeniedText, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    fun startVoice() {
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) showVoice = true else micPermission.launch(Manifest.permission.RECORD_AUDIO)
-    }
+    val startVoice = rememberMicPermissionRequest { showVoice = true }
 
     fun playMix(keyword: String) {
         if (mixBusyFor != null) return
@@ -181,9 +164,15 @@ fun DiscoverScreen(
     }
 
     if (showVoice) {
-        VoiceAddDialog(
+        VoiceDialog(
             languageTag = VoiceLanguages.tagFor(voiceLanguage),
-            onAdd = onAdd,
+            titleRes = R.string.voice_dialog_title,
+            questionRes = R.string.voice_add_confirm,
+            confirmRes = R.string.voice_add_yes,
+            notFoundRes = R.string.voice_error_no_match,
+            // Keywords need no lookup: the transcript itself is the category.
+            resolve = { VoiceTarget(it, it) },
+            onConfirm = onAdd,
             onDismiss = { showVoice = false },
         )
     }

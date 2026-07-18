@@ -11,7 +11,7 @@ import android.view.KeyEvent
  * MainActivity drops the copy for the activity window; dialogs are their own window
  * and bypass Activity.dispatchKeyEvent entirely, so any dialog with knob-clickable
  * buttons must re-apply this check via onPreviewKeyEvent on its surface (see
- * VoiceAddDialog).
+ * ui/voice/VoiceDialog).
  */
 fun isSyntheticKnobDuplicate(event: KeyEvent): Boolean {
     val hasNamedDevice = !event.device?.name.isNullOrEmpty()

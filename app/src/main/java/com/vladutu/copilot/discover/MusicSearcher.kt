@@ -3,8 +3,8 @@ package com.vladutu.copilot.discover
 /** A playlist found by keyword search. Raw ID only — URL building is the caller's job. */
 data class FoundPlaylist(val playlistId: String, val title: String, val thumbnailUrl: String?)
 
-/** A song found by keyword search; used as a radio-mix seed. */
-data class FoundSong(val videoId: String, val title: String)
+/** A song found by keyword search; a radio-mix seed or a voice-search play target. */
+data class FoundSong(val videoId: String, val title: String, val thumbnailUrl: String? = null)
 
 /** Wraps any backend failure so callers never see library-specific exceptions. */
 class SearchException(message: String, cause: Throwable? = null) : Exception(message, cause)

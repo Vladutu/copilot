@@ -64,6 +64,19 @@ class DiscoverRepositoryTest {
         assertNull(repo.mixSeed("nothing"))
     }
 
+    @Test fun `findSong returns the best match and reuses the song cache`() = runTest {
+        searcher.songs = listOf(FoundSong("v1", "Shape of You", "https://img/1"), FoundSong("v2", "Other"))
+        val repo = DiscoverRepository(searcher)
+        assertEquals("v1", repo.findSong("shape of you ed sheeran")!!.videoId)
+        repo.findSong("Shape Of You Ed Sheeran") // same query, different casing
+        assertEquals(1, searcher.songCalls)
+    }
+
+    @Test fun `findSong is null when nothing found`() = runTest {
+        val repo = DiscoverRepository(searcher)
+        assertNull(repo.findSong("mumbling"))
+    }
+
     @Test fun `search failures propagate as SearchException`() = runTest {
         searcher.throwOnSearch = true
         val repo = DiscoverRepository(searcher)

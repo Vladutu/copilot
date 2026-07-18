@@ -32,6 +32,11 @@ class DiscoverRepository(
         songs.take(MIX_SEED_POOL).randomOrNull(random)
     }
 
+    /** Best match for a spoken "title + artist" query (the Songs voice tile). */
+    suspend fun findSong(query: String): FoundSong? = mutex.withLock {
+        songCache.getOrPut(cacheKey(query)) { searcher.searchSongs(query) }.firstOrNull()
+    }
+
     private fun cacheKey(keyword: String) = keyword.trim().lowercase()
 
     private companion object {

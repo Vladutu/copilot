@@ -34,7 +34,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.vladutu.copilot.bubble.BubbleController
+import com.vladutu.copilot.discover.YtMusicUrls
 import com.vladutu.copilot.history.Form
+import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.MediaListenerService
 import com.vladutu.copilot.service.ListenerService
@@ -45,6 +47,7 @@ import com.vladutu.copilot.ui.discover.DiscoverScreen
 import com.vladutu.copilot.ui.home.HomeScreen
 import com.vladutu.copilot.ui.liked.LikedSongsScreen
 import com.vladutu.copilot.ui.lists.SavedListScreen
+import com.vladutu.copilot.ui.lists.VoiceSongConfig
 import com.vladutu.copilot.ui.music.MusicScreen
 import com.vladutu.copilot.ui.permissions.PermissionGate
 import com.vladutu.copilot.ui.BackgroundGlow
@@ -274,6 +277,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
             val form = Form.fromWire(formArg) ?: return@composable
             val items by app.locator.historyRepository.itemsFor(form)
                 .collectAsStateWithLifecycle(emptyList())
+            val voiceLanguage by app.locator.settingsStore.voiceLanguageFlow
+                .collectAsStateWithLifecycle(initialValue = VoiceLanguages.SYSTEM_ID)
             SavedListScreen(
                 items = items,
                 form = form,
@@ -300,6 +305,37 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                         }
                     }
                 } else null,
+                voiceSong = if (form == Form.SONG) {
+                    VoiceSongConfig(
+                        languageTag = VoiceLanguages.tagFor(voiceLanguage),
+                        find = { query -> app.locator.discoverRepository.findSong(query) },
+                        onPlay = { song ->
+                            val url = YtMusicUrls.song(song.videoId)
+                            launchOrReport(launcher.launchYtMusic(url)) {
+                                // Save mirrors the ntfy path (ListenerService): fresh
+                                // savedAt lands it first in the list, artwork fetched
+                                // in the background.
+                                app.applicationScope.launch {
+                                    app.locator.historyRepository.save(
+                                        SavedItem(
+                                            form = Form.SONG,
+                                            id = song.videoId,
+                                            title = song.title,
+                                            imageUrl = song.thumbnailUrl,
+                                            url = url,
+                                            cmd = "ytmusic",
+                                            savedAt = System.currentTimeMillis() / 1000L,
+                                        ),
+                                    )
+                                    song.thumbnailUrl?.let {
+                                        app.locator.artworkCache.download(it, Form.SONG, song.videoId)
+                                    }
+                                }
+                                onLeftToOtherApp()
+                            }
+                        },
+                    )
+                } else null,
             )
         }
 
@@ -315,7 +351,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 voiceLanguage = voiceLanguage,
                 onBrowse = { keyword -> nav.navigate("discoverBrowse/${Uri.encode(keyword)}") },
                 onAdd = { keyword ->
-                    app.applicationScope.launch { app.locator.categoryStore.add(keyword) }
+                    // first: a voice add should be visible without paging.
+                    app.applicationScope.launch { app.locator.categoryStore.add(keyword, first = true) }
                 },
                 onDelete = { keyword ->
                     app.applicationScope.launch { app.locator.categoryStore.delete(keyword) }

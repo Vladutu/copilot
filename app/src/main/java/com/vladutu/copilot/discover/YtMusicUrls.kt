@@ -14,4 +14,8 @@ object YtMusicUrls {
     /** YT Music "song radio": endless generated mix seeded from one video. */
     fun radioMix(videoId: String): String =
         "https://music.youtube.com/watch?v=$videoId&list=RDAMVM$videoId"
+
+    /** Plays one song directly (the Songs voice tile); YT Music autoplays onward. */
+    fun song(videoId: String): String =
+        "https://music.youtube.com/watch?v=$videoId"
 }

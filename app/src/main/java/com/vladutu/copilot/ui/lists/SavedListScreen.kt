@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.AlertDialog
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
+import com.vladutu.copilot.discover.FoundSong
 import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
@@ -39,9 +41,23 @@ import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
+import com.vladutu.copilot.ui.voice.VoiceDialog
+import com.vladutu.copilot.ui.voice.VoiceTarget
+import com.vladutu.copilot.ui.voice.rememberMicPermissionRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+
+/**
+ * Everything the Songs voice tile needs: speak "title + artist", [find] the best
+ * YT Music match, confirm, then [onPlay] launches it (the caller also saves it to
+ * history, which lands it first in the list via savedAt ordering).
+ */
+data class VoiceSongConfig(
+    val languageTag: String?,
+    val find: suspend (String) -> FoundSong?,
+    val onPlay: (FoundSong) -> Unit,
+)
 
 @Composable
 fun SavedListScreen(
@@ -54,9 +70,13 @@ fun SavedListScreen(
     onBack: () -> Unit,
     // Non-null adds a whole-list Clear button in the header (currently Songs only).
     onClearAll: (() -> Unit)? = null,
+    // Non-null adds the voice tile first in the grid (currently Songs only).
+    voiceSong: VoiceSongConfig? = null,
 ) {
     var pendingDelete by remember { mutableStateOf<SavedItem?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    var showVoice by remember { mutableStateOf(false) }
+    val startVoice = rememberMicPermissionRequest { showVoice = true }
     // Position count shown flush-right in the header (e.g. "1–5 / 24"); driven by the rail.
     var rangeText by remember { mutableStateOf<String?>(null) }
     val title = when (form) {
@@ -108,7 +128,7 @@ fun SavedListScreen(
             } else null,
         )
 
-        if (items.isEmpty()) {
+        if (items.isEmpty() && voiceSong == null) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(text = emptyText, style = MaterialTheme.typography.titleLarge)
             }
@@ -116,23 +136,49 @@ fun SavedListScreen(
             // resetKey: when the top item changes (manual tap, or Pilot event arriving
             // while this screen is open) the user lands back on page 0 to see it.
             // Knob behavior (always-consume, page edges, clamp) lives in KnobPagedGrid.
+            val rows = remember(items, voiceSong != null) {
+                (if (voiceSong != null) listOf<RowItem>(RowItem.Voice) else emptyList()) +
+                    items.map { RowItem.Saved(it) }
+            }
             KnobPagedGrid(
-                items = items,
+                items = rows,
                 resetKey = items.firstOrNull()?.id,
                 modifier = Modifier.weight(1f),
                 onRangeChange = { rangeText = it },
-            ) { item, requesters ->
-                SavedRow(
-                    item = item,
-                    artworkFile = artworkCache.fileFor(item.form, item.id),
-                    focus = requesters?.get(0),
-                    onTap = { onTap(item) },
-                    onLongPress = { pendingDelete = item },
-                )
+            ) { row, requesters ->
+                when (row) {
+                    is RowItem.Voice -> MediaRowTile(
+                        modifier = Modifier.fillMaxSize(),
+                        label = stringResource(R.string.voice_song_tile),
+                        onClick = { startVoice() },
+                        focusRequester = requesters?.get(0),
+                        fallbackIcon = Icons.Filled.Mic,
+                    )
+                    is RowItem.Saved -> SavedRow(
+                        item = row.item,
+                        artworkFile = artworkCache.fileFor(row.item.form, row.item.id),
+                        focus = requesters?.get(0),
+                        onTap = { onTap(row.item) },
+                        onLongPress = { pendingDelete = row.item },
+                    )
+                }
             }
         }
 
         NowPlayingStrip(nowPlaying = nowPlaying)
+    }
+
+    if (showVoice && voiceSong != null) {
+        VoiceDialog(
+            languageTag = voiceSong.languageTag,
+            titleRes = R.string.voice_song_title,
+            questionRes = R.string.voice_play_confirm,
+            confirmRes = R.string.voice_play_yes,
+            notFoundRes = R.string.voice_song_not_found,
+            resolve = { query -> voiceSong.find(query)?.let { VoiceTarget(it, it.title) } },
+            onConfirm = voiceSong.onPlay,
+            onDismiss = { showVoice = false },
+        )
     }
 
     if (confirmClear) {
@@ -170,6 +216,12 @@ fun SavedListScreen(
             },
         )
     }
+}
+
+/** Grid entries: the optional voice tile first, then one entry per saved item. */
+private sealed interface RowItem {
+    object Voice : RowItem
+    data class Saved(val item: SavedItem) : RowItem
 }
 
 @Composable

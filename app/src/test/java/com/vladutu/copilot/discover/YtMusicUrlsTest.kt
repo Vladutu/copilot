@@ -9,4 +9,7 @@ class YtMusicUrlsTest {
 
     @Test fun `radio mix url repeats the seed in the RDAMVM list`() =
         assertEquals("https://music.youtube.com/watch?v=abc&list=RDAMVMabc", YtMusicUrls.radioMix("abc"))
+
+    @Test fun `song url plays one video directly`() =
+        assertEquals("https://music.youtube.com/watch?v=abc", YtMusicUrls.song("abc"))
 }

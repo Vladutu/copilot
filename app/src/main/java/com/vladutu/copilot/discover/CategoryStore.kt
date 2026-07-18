@@ -23,12 +23,23 @@ class CategoryStore(private val dataStore: DataStore<Preferences>) {
 
     fun categories(): Flow<List<String>> = dataStore.data.map { prefs -> decode(prefs[KEY]) }
 
-    /** Idempotent: re-sending an existing keyword (any casing) is a no-op. */
-    suspend fun add(keyword: String) {
+    /**
+     * Idempotent: re-sending an existing keyword (any casing) is a no-op — except with
+     * [first], which prepends new keywords and promotes existing ones to the front
+     * (voice adds: the driver should see the tile without paging). Pilot's ntfy adds
+     * keep appending so a re-synced backlog doesn't reshuffle the grid.
+     */
+    suspend fun add(keyword: String, first: Boolean = false) {
         val cleaned = keyword.trim()
         if (cleaned.isEmpty()) return
         mutate { current ->
-            if (current.any { it.equals(cleaned, ignoreCase = true) }) current else current + cleaned
+            val existing = current.firstOrNull { it.equals(cleaned, ignoreCase = true) }
+            when {
+                existing != null && first -> listOf(existing) + (current - existing)
+                existing != null -> current
+                first -> listOf(cleaned) + current
+                else -> current + cleaned
+            }
         }
     }
 
