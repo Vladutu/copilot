@@ -16,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -233,10 +234,12 @@ fun <T> VoiceDialog(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     if (p.partial != null) {
+                        // Read-at-a-glance transcript: the dialog slot's default is the
+                        // muted onSurfaceVariant — too gray on the car screen.
                         Text(
                             text = p.partial,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -250,47 +253,53 @@ fun <T> VoiceDialog(
                     Text(
                         text = stringResource(R.string.voice_searching, p.transcript),
                         style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
                     )
                 }
                 is VoicePhase.Ready -> Text(
                     text = stringResource(questionRes, p.label),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 is VoicePhase.Error -> Text(
                     text = p.message,
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         },
         confirmButton = {
-            when (phase) {
-                is VoicePhase.Listening, is VoicePhase.Resolving -> Unit
-                is VoicePhase.Ready -> DialogKnobButton(
-                    label = stringResource(confirmRes),
-                    focus = primaryFocus,
-                    onClick = {
-                        val ready = target
-                        if (!acted && ready != null) {
-                            acted = true
-                            onConfirm(ready.value)
-                            onDismiss()
-                        }
-                    },
-                )
-                is VoicePhase.Error -> DialogKnobButton(
-                    label = stringResource(R.string.discover_retry),
-                    focus = primaryFocus,
-                    onClick = { attempt++ },
+            // Both buttons live in this one slot so the action reads first and Cancel
+            // second — M3's dismiss-then-confirm order is the wrong way around for a
+            // glance on the car screen.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                when (phase) {
+                    is VoicePhase.Listening, is VoicePhase.Resolving -> Unit
+                    is VoicePhase.Ready -> DialogKnobButton(
+                        label = stringResource(confirmRes),
+                        focus = primaryFocus,
+                        onClick = {
+                            val ready = target
+                            if (!acted && ready != null) {
+                                acted = true
+                                onConfirm(ready.value)
+                                onDismiss()
+                            }
+                        },
+                    )
+                    is VoicePhase.Error -> DialogKnobButton(
+                        label = stringResource(R.string.discover_retry),
+                        focus = primaryFocus,
+                        onClick = { attempt++ },
+                    )
+                }
+                DialogKnobButton(
+                    label = stringResource(R.string.confirm_delete_no),
+                    focus = if (phase is VoicePhase.Ready || phase is VoicePhase.Error) null else primaryFocus,
+                    onClick = onDismiss,
                 )
             }
-        },
-        dismissButton = {
-            DialogKnobButton(
-                label = stringResource(R.string.confirm_delete_no),
-                focus = if (phase is VoicePhase.Ready || phase is VoicePhase.Error) null else primaryFocus,
-                onClick = onDismiss,
-            )
         },
     )
 }
