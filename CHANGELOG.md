@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.27.2] - 2026-07-18
+
+### Added
+- Bigger white voice-dialog text, action button before Cancel
+
 ## [0.27.1] - 2026-07-18
 
 ### Added
@@ -413,6 +418,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.27.2]: https://github.com/Vladutu/copilot/compare/v0.27.1...v0.27.2
 [0.27.1]: https://github.com/Vladutu/copilot/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/Vladutu/copilot/compare/v0.26.2...v0.27.0
 [0.26.2]: https://github.com/Vladutu/copilot/compare/v0.26.1...v0.26.2
