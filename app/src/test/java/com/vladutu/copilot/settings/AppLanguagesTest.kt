@@ -23,7 +23,7 @@ class AppLanguagesTest {
 
     @Test fun `localeFor maps ids to locales, unknown falls back to english`() {
         assertEquals(Locale.ENGLISH, AppLanguages.localeFor("en"))
-        assertEquals(Locale("ro", "RO"), AppLanguages.localeFor("ro"))
+        assertEquals(Locale.forLanguageTag("ro-RO"), AppLanguages.localeFor("ro"))
         assertEquals(Locale.ENGLISH, AppLanguages.localeFor("xx"))
     }
 

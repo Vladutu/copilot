@@ -27,7 +27,7 @@ object AppLanguages {
 
     /** Unknown ids resolve to English, mirroring themeById's downgrade-safety. */
     fun localeFor(id: String): Locale = when (id) {
-        "ro" -> Locale("ro", "RO")
+        "ro" -> Locale.forLanguageTag("ro-RO")
         else -> Locale.ENGLISH
     }
 }
