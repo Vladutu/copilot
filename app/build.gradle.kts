@@ -68,6 +68,8 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric tests resolve real string resources (AppLauncher failure reasons).
+        unitTests.isIncludeAndroidResources = true
     }
 }
 

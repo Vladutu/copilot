@@ -150,6 +150,17 @@ class SettingsStoreTest {
         assertEquals(LayoutMode.LANDSCAPE, store.layoutModeFlow.first())
     }
 
+    @Test fun `app language defaults to english`() = runTest {
+        assertEquals(AppLanguages.DEFAULT_ID, store.appLanguageFlow.first())
+    }
+
+    @Test fun `setAppLanguage round-trips`() = runTest {
+        store.setAppLanguage("ro")
+        assertEquals("ro", store.appLanguageFlow.first())
+        store.setAppLanguage("en")
+        assertEquals("en", store.appLanguageFlow.first())
+    }
+
     @Test fun `voice language defaults to system`() = runTest {
         assertEquals(VoiceLanguages.SYSTEM_ID, store.voiceLanguageFlow.first())
     }

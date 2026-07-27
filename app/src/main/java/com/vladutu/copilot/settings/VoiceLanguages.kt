@@ -1,5 +1,8 @@
 package com.vladutu.copilot.settings
 
+import androidx.annotation.StringRes
+import com.vladutu.copilot.R
+
 /**
  * Languages offered for the Discover voice tile's speech recognition. A setting of
  * its own because the recognizer defaults to the device locale — the carbox runs in
@@ -9,14 +12,15 @@ package com.vladutu.copilot.settings
 object VoiceLanguages {
     const val SYSTEM_ID = "system"
 
-    /** id to display label, in dropdown order. */
-    val options: List<Pair<String, String>> = listOf(
-        SYSTEM_ID to "Device language",
-        "en-US" to "English",
-        "ro-RO" to "Română",
+    /** id to display-label resource, in dropdown order. */
+    val options: List<Pair<String, Int>> = listOf(
+        SYSTEM_ID to R.string.voice_lang_device,
+        "en-US" to R.string.voice_lang_english,
+        "ro-RO" to R.string.voice_lang_romanian,
     )
 
-    fun labelFor(id: String): String =
+    @StringRes
+    fun labelResFor(id: String): Int =
         options.firstOrNull { it.first == id }?.second ?: options.first().second
 
     /** Language tag for the recognizer intent; null → recognizer's own default. */

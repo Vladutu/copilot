@@ -1,6 +1,8 @@
 package com.vladutu.copilot.ui.theme
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.vladutu.copilot.R
 
 /**
  * User-chosen screen orientation (Settings > Display). Head units have no meaningful
@@ -12,9 +14,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * Persisted by [id] so renaming a constant never breaks a saved preference; unknown ids
  * resolve to [LANDSCAPE] at read time, mirroring themeById.
  */
-enum class LayoutMode(val id: String, val label: String) {
-    LANDSCAPE("landscape", "Landscape"),
-    PORTRAIT("portrait", "Portrait"),
+enum class LayoutMode(val id: String, @StringRes val labelRes: Int) {
+    LANDSCAPE("landscape", R.string.layout_landscape),
+    PORTRAIT("portrait", R.string.layout_portrait),
     ;
 
     companion object {

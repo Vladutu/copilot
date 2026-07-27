@@ -3,6 +3,7 @@ package com.vladutu.copilot.service
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
@@ -19,6 +20,7 @@ import com.vladutu.copilot.net.NtfySubscriber
 import com.vladutu.copilot.net.ParseResult
 import com.vladutu.copilot.net.StreamEvent
 import com.vladutu.copilot.net.savesToHistory
+import com.vladutu.copilot.settings.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,6 +53,14 @@ data class UiState(
 )
 
 class ListenerService : Service() {
+
+    // Same wrap as MainActivity: notification texts and recent-event labels follow the
+    // chosen app language. A long-running instance keeps the language it started with
+    // until its next restart (in practice: the next drive).
+    override fun attachBaseContext(newBase: Context) {
+        val settings = (newBase.applicationContext as CopilotApp).locator.settingsStore
+        super.attachBaseContext(AppLocale.wrap(newBase, settings))
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -89,7 +99,9 @@ class ListenerService : Service() {
             topic = topic,
             maxAgeSec = Config.MAX_MESSAGE_AGE_SEC,
         )
-        val launcher = AppLauncher(applicationContext)
+        // The service context, not applicationContext: it carries the AppLocale wrap,
+        // so launch-failure reasons land in recent events in the chosen language.
+        val launcher = AppLauncher(this)
         val app = applicationContext as CopilotApp
         val history = app.locator.historyRepository
         val artwork = app.locator.artworkCache
@@ -124,14 +136,14 @@ class ListenerService : Service() {
                     val outcome = withContext(Dispatchers.Main) { launcher.launch(msg) }
                     val ok = outcome is AppLauncher.Result.Ok
                     val label = when (msg.cmd) {
-                        "ytmusic" -> "play"
-                        "youtube" -> "watch"
-                        "waze", "maps" -> "navigate"
-                        "radio" -> "listen"
+                        "ytmusic" -> getString(R.string.event_verb_play)
+                        "youtube" -> getString(R.string.event_verb_watch)
+                        "waze", "maps" -> getString(R.string.event_verb_navigate)
+                        "radio" -> getString(R.string.event_verb_listen)
                         else -> msg.cmd
                     }
                     val text = when (outcome) {
-                        AppLauncher.Result.Ok -> "▶ $label · launched"
+                        AppLauncher.Result.Ok -> "▶ $label · ${getString(R.string.event_launched)}"
                         is AppLauncher.Result.Failed -> {
                             Log.w(TAG, "launch failed: ${outcome.reason}")
                             "✗ $label · ${outcome.reason}"
@@ -155,7 +167,7 @@ class ListenerService : Service() {
                 }
                 is ParseResult.Category -> {
                     app.locator.categoryStore.add(result.keyword)
-                    appendRecent("✚ category · ${result.keyword}", ok = true, skewSec = result.skewSec)
+                    appendRecent("✚ ${getString(R.string.event_category)} · ${result.keyword}", ok = true, skewSec = result.skewSec)
                 }
                 is ParseResult.Rejected -> {
                     appendRecent("✗ ${result.reason}", ok = false, skewSec = result.skewSec)
@@ -187,8 +199,8 @@ class ListenerService : Service() {
         )
         return NotificationCompat.Builder(this, CopilotApp.CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Copilot listening")
-            .setContentText("Connected to relay")
+            .setContentTitle(getString(R.string.listener_notif_title))
+            .setContentText(getString(R.string.listener_notif_text))
             .setContentIntent(openApp)
             .setOngoing(true)
             .build()

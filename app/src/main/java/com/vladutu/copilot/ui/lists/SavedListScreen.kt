@@ -243,7 +243,7 @@ private fun SavedRow(
     }
     MediaRowTile(
         modifier = Modifier.fillMaxSize(),
-        label = item.title ?: "Untitled · ${item.id.take(8)}",
+        label = item.title ?: stringResource(R.string.untitled_item, item.id.take(8)),
         onClick = onTap,
         onLongPress = onLongPress,
         focusRequester = focus,

@@ -8,6 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.vladutu.copilot.di.ServiceLocator
 import com.vladutu.copilot.diagnostics.DiagnosticLog
+import com.vladutu.copilot.settings.AppLocale
 import com.vladutu.copilot.split.SplitScreen
 import kotlinx.coroutines.launch
 import java.io.PrintWriter
@@ -34,13 +35,17 @@ class CopilotApp : Application() {
         applicationScope.launch {
             locator.settingsStore.splitScreenFlow.collect { SplitScreen.enabled = it }
         }
+        // Channel name/description in the chosen app language (the Application context
+        // itself follows the device locale). Re-registering with a new name is allowed,
+        // so a language change shows up here on the next app start.
+        val localized = AppLocale.wrap(this, locator.settingsStore)
         val mgr = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Copilot listener",
+            localized.getString(R.string.listener_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Keeps Copilot connected to the relay"
+            description = localized.getString(R.string.listener_channel_description)
             setShowBadge(false)
         }
         mgr.createNotificationChannel(channel)

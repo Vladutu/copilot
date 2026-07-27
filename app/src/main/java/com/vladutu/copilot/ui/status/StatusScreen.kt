@@ -27,10 +27,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vladutu.copilot.R
 import com.vladutu.copilot.config.Config
 import com.vladutu.copilot.service.ConnState
 import com.vladutu.copilot.service.RecentEvent
@@ -58,7 +60,7 @@ fun StatusScreen(state: UiState, onBack: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        ScreenHeader(title = "Status", onBack = onBack)
+        ScreenHeader(title = stringResource(R.string.status_title), onBack = onBack)
         if (LocalLayoutMode.current == LayoutMode.PORTRAIT) {
             // No width for side-by-side cards on an upright panel: hero (+skew) stacks
             // above the events list, keeping the same 38/62 share top-to-bottom.
@@ -155,7 +157,7 @@ private fun ConnectionHero(state: UiState, modifier: Modifier = Modifier) {
                         .background(color),
                 )
             }
-            Text(state.conn.label(), style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(state.conn.labelRes()), style = MaterialTheme.typography.headlineMedium)
             state.subtitle(nowSec)?.let {
                 Text(
                     text = it,
@@ -188,7 +190,7 @@ private fun SkewCard(skewSec: Long) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Clock skew (phone − box)", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.status_clock_skew), style = MaterialTheme.typography.bodyLarge)
             Text(
                 text = "$sign${skewSec}s",
                 style = MaterialTheme.typography.titleMedium,
@@ -213,7 +215,7 @@ private fun RecentEventsCard(events: List<RecentEvent>, modifier: Modifier = Mod
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "RECENT EVENTS",
+                text = stringResource(R.string.status_recent_events).uppercase(),
                 style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -265,12 +267,14 @@ private fun EventRow(event: RecentEvent) {
     }
 }
 
+@Composable
 private fun UiState.subtitle(nowSec: Long): String? = when (conn) {
     is ConnState.Connected -> connectedSinceSec?.let { since ->
         val mins = ((nowSec - since) / 60).coerceAtLeast(0)
         val h = mins / 60
         val m = mins % 60
-        if (h > 0) "listening for ${h}h ${m}m" else "listening for ${m}m"
+        if (h > 0) stringResource(R.string.status_listening_hm, h, m)
+        else stringResource(R.string.status_listening_m, m)
     }
     is ConnState.Reconnecting -> null
     is ConnState.Error -> conn.message
@@ -283,8 +287,8 @@ private fun ConnState.color(): Color = when (this) {
     is ConnState.Error -> MaterialTheme.colorScheme.error
 }
 
-private fun ConnState.label(): String = when (this) {
-    is ConnState.Connected -> "Connected"
-    is ConnState.Reconnecting -> "Connecting"
-    is ConnState.Error -> "Error"
+private fun ConnState.labelRes(): Int = when (this) {
+    is ConnState.Connected -> R.string.status_connected
+    is ConnState.Reconnecting -> R.string.status_connecting
+    is ConnState.Error -> R.string.status_error
 }

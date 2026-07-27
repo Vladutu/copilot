@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.util.Log
 import com.vladutu.copilot.R
 import com.vladutu.copilot.MainActivity
+import com.vladutu.copilot.settings.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +22,12 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class BubbleService : Service() {
+
+    // Same wrap as MainActivity, so the bubble notification follows the app language.
+    override fun attachBaseContext(newBase: Context) {
+        val settings = (newBase.applicationContext as com.vladutu.copilot.CopilotApp).locator.settingsStore
+        super.attachBaseContext(AppLocale.wrap(newBase, settings))
+    }
 
     private var bubbleView: BubbleView? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

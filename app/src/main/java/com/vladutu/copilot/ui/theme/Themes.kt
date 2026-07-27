@@ -1,10 +1,12 @@
 package com.vladutu.copilot.ui.theme
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.vladutu.copilot.R
 
 /**
  * Decorative extras a theme may carry beyond colors/typography. Screens render them
@@ -34,8 +36,8 @@ data class ThemeAccents(
 data class ThemeSpec(
     /** Persisted in DataStore — lowercase, stable across releases. */
     val id: String,
-    /** Shown in the Settings dropdown. */
-    val label: String,
+    /** Shown in the Settings dropdown; a resource so it follows the app language. */
+    @StringRes val labelRes: Int,
     val colorScheme: ColorScheme,
     val typography: Typography,
     val accents: ThemeAccents = ThemeAccents(),
@@ -43,7 +45,7 @@ data class ThemeSpec(
 
 val DefaultTheme = ThemeSpec(
     id = "default",
-    label = "Default",
+    labelRes = R.string.theme_default,
     colorScheme = darkColorScheme(
         primary = PilotPrimary,
         onPrimary = PilotOnPrimary,
@@ -67,7 +69,7 @@ val DefaultTheme = ThemeSpec(
 
 val BmwTheme = ThemeSpec(
     id = "bmw",
-    label = "BMW",
+    labelRes = R.string.theme_bmw,
     colorScheme = darkColorScheme(
         primary = BmwPrimary,
         onPrimary = BmwOnPrimary,

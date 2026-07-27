@@ -51,6 +51,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.vladutu.copilot.BuildConfig
 import com.vladutu.copilot.R
+import com.vladutu.copilot.settings.AppLanguages
 import com.vladutu.copilot.settings.PairingUri
 import com.vladutu.copilot.settings.VoiceLanguages
 import com.vladutu.copilot.ui.ScreenHeader
@@ -95,6 +96,8 @@ fun SettingsScreen(
     onMenuPageSizeChange: (Int) -> Unit,
     listPageSize: Int,
     onListPageSizeChange: (Int) -> Unit,
+    appLanguage: String,
+    onAppLanguageChange: (String) -> Unit,
     voiceLanguage: String,
     onVoiceLanguageChange: (String) -> Unit,
     wazeGoEnabled: Boolean,
@@ -158,8 +161,8 @@ fun SettingsScreen(
         SettingsSection(title = stringResource(R.string.settings_display_label)) {
             DropdownRow(
                 label = stringResource(R.string.settings_theme_label),
-                selectedLabel = themeById(themeId).label,
-                options = AllThemes.map { it.id to it.label },
+                selectedLabel = stringResource(themeById(themeId).labelRes),
+                options = AllThemes.map { it.id to stringResource(it.labelRes) },
                 onSelect = onThemeChange,
             )
             // Only themes that carry a background sweep (currently BMW) get the toggle;
@@ -184,13 +187,22 @@ fun SettingsScreen(
             // the activity and folds the rails into two-column grids for upright panels.
             DropdownRow(
                 label = stringResource(R.string.settings_layout_label),
-                selectedLabel = layoutMode.label,
-                options = LayoutMode.entries.map { it.id to it.label },
+                selectedLabel = stringResource(layoutMode.labelRes),
+                options = LayoutMode.entries.map { it.id to stringResource(it.labelRes) },
                 onSelect = { onLayoutModeChange(LayoutMode.fromId(it)) },
             )
         }
 
         SettingsSection(title = stringResource(R.string.settings_general_label)) {
+            // App-wide UI language, English by default regardless of device locale.
+            // A change recreates the activity (see MainActivity) so every screen
+            // re-resolves its strings.
+            DropdownRow(
+                label = stringResource(R.string.settings_app_language),
+                selectedLabel = stringResource(AppLanguages.labelResFor(appLanguage)),
+                options = AppLanguages.options.map { it.first to stringResource(it.second) },
+                onSelect = onAppLanguageChange,
+            )
             SwitchRow(
                 label = stringResource(R.string.settings_autostart_label),
                 checked = autoStart,
@@ -208,8 +220,8 @@ fun SettingsScreen(
             // recognizer otherwise follows the device locale (the carbox runs English).
             DropdownRow(
                 label = stringResource(R.string.settings_voice_language),
-                selectedLabel = VoiceLanguages.labelFor(voiceLanguage),
-                options = VoiceLanguages.options,
+                selectedLabel = stringResource(VoiceLanguages.labelResFor(voiceLanguage)),
+                options = VoiceLanguages.options.map { it.first to stringResource(it.second) },
                 onSelect = onVoiceLanguageChange,
             )
         }

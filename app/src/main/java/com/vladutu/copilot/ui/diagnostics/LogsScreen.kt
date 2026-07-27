@@ -32,11 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.vladutu.copilot.R
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.diagnostics.LogUploader
 import com.vladutu.copilot.ui.ScreenHeader
@@ -49,19 +52,22 @@ fun LogsScreen(uploader: LogUploader, onBack: () -> Unit) {
     var uploading by remember { mutableStateOf(false) }
     var sharedUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    // LocalResources, not context.getString: resource values read through LocalContext
+    // don't recompose on locale changes (LocalContextGetResourceValueCall lint error).
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ScreenHeader(title = "Diagnostic log", onBack = onBack)
+        ScreenHeader(title = stringResource(R.string.settings_diagnostic_log), onBack = onBack)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { content = DiagnosticLog.read() }) { Text("Refresh") }
+            OutlinedButton(onClick = { content = DiagnosticLog.read() }) { Text(stringResource(R.string.logs_refresh)) }
             OutlinedButton(onClick = {
                 copyToClipboard(context, content)
-                Toast.makeText(context, "Log copied", Toast.LENGTH_SHORT).show()
-            }) { Text("Copy") }
+                Toast.makeText(context, resources.getString(R.string.logs_copied), Toast.LENGTH_SHORT).show()
+            }) { Text(stringResource(R.string.logs_copy)) }
             OutlinedButton(
                 enabled = !uploading,
                 onClick = {
@@ -70,17 +76,21 @@ fun LogsScreen(uploader: LogUploader, onBack: () -> Unit) {
                         try {
                             sharedUrl = uploader.upload(DiagnosticLog.read())
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Upload failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                context,
+                                resources.getString(R.string.logs_upload_failed, e.message ?: ""),
+                                Toast.LENGTH_LONG,
+                            ).show()
                         } finally {
                             uploading = false
                         }
                     }
                 },
-            ) { Text(if (uploading) "Uploading…" else "Share") }
+            ) { Text(stringResource(if (uploading) R.string.logs_uploading else R.string.logs_share)) }
             OutlinedButton(onClick = {
                 DiagnosticLog.clear()
                 content = DiagnosticLog.read()
-            }) { Text("Clear") }
+            }) { Text(stringResource(R.string.logs_clear)) }
         }
         Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Text(
@@ -130,7 +140,7 @@ private fun ShareDialog(url: String, onDismiss: () -> Unit) {
                         TextButton(
                             onClick = onDismiss,
                             modifier = Modifier.align(Alignment.End),
-                        ) { Text("Close") }
+                        ) { Text(stringResource(R.string.logs_close)) }
                     }
                 }
             } else {
@@ -144,7 +154,7 @@ private fun ShareDialog(url: String, onDismiss: () -> Unit) {
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier.align(Alignment.End),
-                    ) { Text("Close") }
+                    ) { Text(stringResource(R.string.logs_close)) }
                 }
             }
         }
@@ -155,7 +165,7 @@ private fun ShareDialog(url: String, onDismiss: () -> Unit) {
 private fun QrImage(qr: Bitmap, side: Dp) {
     Image(
         bitmap = qr.asImageBitmap(),
-        contentDescription = "QR code of the log link",
+        contentDescription = stringResource(R.string.logs_qr_desc),
         modifier = Modifier.size(side),
     )
 }
@@ -163,7 +173,7 @@ private fun QrImage(qr: Bitmap, side: Dp) {
 @Composable
 private fun ShareDialogTexts(url: String) {
     Text(
-        text = "Scan with your phone",
+        text = stringResource(R.string.logs_scan_phone),
         style = MaterialTheme.typography.headlineSmall,
     )
     Text(
@@ -172,7 +182,7 @@ private fun ShareDialogTexts(url: String) {
         fontSize = 16.sp,
     )
     Text(
-        text = "Link expires in ${LogUploader.RETENTION_DAYS} days",
+        text = stringResource(R.string.logs_expires, LogUploader.RETENTION_DAYS),
         style = MaterialTheme.typography.bodySmall,
     )
 }

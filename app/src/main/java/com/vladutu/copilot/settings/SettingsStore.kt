@@ -143,6 +143,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_WAZE_GO_LABEL] = label }
     }
 
+    /** App UI language (see [AppLanguages]); applied via [AppLocale] at context-attach time. */
+    val appLanguageFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_APP_LANGUAGE] ?: AppLanguages.DEFAULT_ID
+    }
+
+    suspend fun setAppLanguage(id: String) {
+        dataStore.edit { prefs -> prefs[KEY_APP_LANGUAGE] = id }
+    }
+
     /** Speech-recognition language for the Discover voice tile (see [VoiceLanguages]). */
     val voiceLanguageFlow: Flow<String> = dataStore.data.map { prefs ->
         prefs[KEY_VOICE_LANGUAGE] ?: VoiceLanguages.SYSTEM_ID
@@ -191,5 +200,6 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
         val KEY_VOICE_LANGUAGE = stringPreferencesKey("voice_language")
+        val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
     }
 }

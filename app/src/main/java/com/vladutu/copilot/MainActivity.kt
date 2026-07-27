@@ -1,6 +1,7 @@
 package com.vladutu.copilot
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -40,6 +41,8 @@ import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.MediaListenerService
 import com.vladutu.copilot.service.ListenerService
+import com.vladutu.copilot.settings.AppLanguages
+import com.vladutu.copilot.settings.AppLocale
 import com.vladutu.copilot.settings.VoiceLanguages
 import com.vladutu.copilot.ui.diagnostics.LogsScreen
 import com.vladutu.copilot.ui.discover.BrowseResultsScreen
@@ -70,6 +73,15 @@ import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    // App language is applied by wrapping the base context, so every stringResource in
+    // the composition resolves against the chosen locale instead of the device's. A
+    // language change persists the id and calls recreate() (see the settings route),
+    // which re-runs this wrap; navigation state survives via rememberSaveable.
+    override fun attachBaseContext(newBase: Context) {
+        val settings = (newBase.applicationContext as CopilotApp).locator.settingsStore
+        super.attachBaseContext(AppLocale.wrap(newBase, settings))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -397,6 +409,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = false)
             val splitScreen by app.locator.settingsStore.splitScreenFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val appLanguage by app.locator.settingsStore.appLanguageFlow
+                .collectAsStateWithLifecycle(initialValue = AppLanguages.DEFAULT_ID)
             val voiceLanguage by app.locator.settingsStore.voiceLanguageFlow
                 .collectAsStateWithLifecycle(initialValue = VoiceLanguages.SYSTEM_ID)
             val wazeGoEnabled by app.locator.settingsStore.wazeGoEnabledFlow
@@ -406,6 +420,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
             val topic by app.locator.settingsStore.topicFlow
                 .collectAsStateWithLifecycle(initialValue = null)
             val copiedMsg = stringResource(R.string.settings_topic_copied)
+            val scope = rememberCoroutineScope()
             SettingsScreen(
                 themeId = themeId,
                 onThemeChange = { id ->
@@ -450,6 +465,15 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 listPageSize = listPageSize,
                 onListPageSizeChange = { tiles ->
                     app.applicationScope.launch { app.locator.settingsStore.setListPageSize(tiles) }
+                },
+                appLanguage = appLanguage,
+                onAppLanguageChange = { id ->
+                    // Not applicationScope: the recreate must run after the write lands,
+                    // so attachBaseContext re-reads the fresh value.
+                    scope.launch {
+                        app.locator.settingsStore.setAppLanguage(id)
+                        (context as? Activity)?.recreate()
+                    }
                 },
                 voiceLanguage = voiceLanguage,
                 onVoiceLanguageChange = { id ->

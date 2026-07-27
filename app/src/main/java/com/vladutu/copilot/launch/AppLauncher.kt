@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.vladutu.copilot.R
 import com.vladutu.copilot.autoswitch.AutoSwitchBack
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.history.Form
@@ -45,14 +46,14 @@ class AppLauncher(
     /** Open Waze app (no nav target). */
     fun openWazeApp(): Result {
         val launch = context.packageManager.getLaunchIntentForPackage(WAZE_PKG)
-            ?: return Result.Failed("Waze not installed")
+            ?: return Result.Failed(context.getString(R.string.launch_missing_waze))
         return startNewTask(launch, WAZE_PKG)
     }
 
     /** Open Google Maps app (no nav target). */
     fun openMapsApp(): Result {
         val launch = context.packageManager.getLaunchIntentForPackage(MAPS_PKG)
-            ?: return Result.Failed("Google Maps not installed")
+            ?: return Result.Failed(context.getString(R.string.launch_missing_maps))
         return startNewTask(launch, MAPS_PKG)
     }
 
@@ -73,16 +74,18 @@ class AppLauncher(
             "soundcloud" -> SOUNDCLOUD_PKG
             "waze" -> WAZE_PKG
             "maps" -> null
-            else -> return Result.Failed("unknown command: $cmd")
+            else -> return Result.Failed(context.getString(R.string.launch_unknown_command, cmd))
         }
-        val missingMsg = when (cmd) {
-            "ytmusic" -> "YouTube Music not installed"
-            "youtube" -> "YouTube not installed"
-            "soundcloud" -> "SoundCloud not installed"
-            "waze" -> "Waze not installed"
-            "maps" -> "Google Maps not installed"
-            else -> "target app not installed"
-        }
+        val missingMsg = context.getString(
+            when (cmd) {
+                "ytmusic" -> R.string.launch_missing_ytmusic
+                "youtube" -> R.string.launch_missing_youtube
+                "soundcloud" -> R.string.launch_missing_soundcloud
+                "waze" -> R.string.launch_missing_waze
+                "maps" -> R.string.launch_missing_maps
+                else -> R.string.launch_missing_generic
+            },
+        )
 
         // SoundCloud won't switch to a deep-linked track while another one is actively playing
         // (it shows the page, keeps the old audio). Pausing first makes the deep link take over
@@ -195,7 +198,7 @@ class AppLauncher(
             Result.Failed(missingMsg)
         } catch (e: SecurityException) {
             Log.w(TAG, "background activity start blocked", e)
-            Result.Failed("background launch blocked — grant Display over other apps")
+            Result.Failed(context.getString(R.string.launch_bal_blocked))
         }
     }
 
@@ -221,7 +224,7 @@ class AppLauncher(
         }
 
     private fun launchRadio(url: String, title: String?): Result =
-        dispatch(buildRadioIntent(url, title), VLC_PKG, "VLC not installed", armAutoSwitch = false)
+        dispatch(buildRadioIntent(url, title), VLC_PKG, context.getString(R.string.launch_missing_vlc), armAutoSwitch = false)
 
     private fun startNewTask(intent: Intent, targetPkg: String): Result {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -229,9 +232,9 @@ class AppLauncher(
         return try {
             context.startActivity(intent); Result.Ok
         } catch (e: ActivityNotFoundException) {
-            Result.Failed("not installed")
+            Result.Failed(context.getString(R.string.launch_not_installed))
         } catch (e: SecurityException) {
-            Result.Failed("background launch blocked — grant Display over other apps")
+            Result.Failed(context.getString(R.string.launch_bal_blocked))
         }
     }
 
