@@ -9,7 +9,7 @@ help:  ## Show this help
 	@echo "  make wrapper          (Re)generate the Gradle wrapper (needs gradle installed)"
 
 check:  ## Build, run unit tests, and lint (debug)
-	./gradlew assembleDebug testDebugUnitTest lintDebug
+	./gradlew --console=plain assembleDebug testDebugUnitTest lintDebug
 
 version:  ## Print the current released version
 	@./scripts/version.sh
