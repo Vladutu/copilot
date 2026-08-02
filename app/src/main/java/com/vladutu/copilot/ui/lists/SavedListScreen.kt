@@ -12,11 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Radio
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +35,7 @@ import com.vladutu.copilot.history.ArtworkCache
 import com.vladutu.copilot.history.Form
 import com.vladutu.copilot.history.SavedItem
 import com.vladutu.copilot.nowplaying.NowPlaying
+import com.vladutu.copilot.ui.ConfirmDialog
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
@@ -182,38 +181,20 @@ fun SavedListScreen(
     }
 
     if (confirmClear) {
-        AlertDialog(
-            onDismissRequest = { confirmClear = false },
-            title = { Text(stringResource(R.string.clear_songs_title)) },
-            text = { Text(stringResource(R.string.clear_songs_message)) },
-            confirmButton = {
-                TextButton(onClick = { onClearAll?.invoke(); confirmClear = false }) {
-                    Text(stringResource(R.string.confirm_delete_yes))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmClear = false }) {
-                    Text(stringResource(R.string.confirm_delete_no))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.clear_songs_title),
+            text = stringResource(R.string.clear_songs_message),
+            onConfirm = { onClearAll?.invoke(); confirmClear = false },
+            onDismiss = { confirmClear = false },
         )
     }
 
     pendingDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.confirm_delete_title)) },
-            text = { Text(stringResource(R.string.confirm_delete_message, target.title ?: target.id)) },
-            confirmButton = {
-                TextButton(onClick = { onDelete(target); pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_yes))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_no))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.confirm_delete_title),
+            text = stringResource(R.string.confirm_delete_message, target.title ?: target.id),
+            onConfirm = { onDelete(target); pendingDelete = null },
+            onDismiss = { pendingDelete = null },
         )
     }
 }

@@ -18,13 +18,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +44,7 @@ import com.vladutu.copilot.discover.YtMusicUrls
 import com.vladutu.copilot.launch.AppLauncher
 import com.vladutu.copilot.nowplaying.NowPlaying
 import com.vladutu.copilot.settings.VoiceLanguages
+import com.vladutu.copilot.ui.ConfirmDialog
 import com.vladutu.copilot.ui.KnobPagedGrid
 import com.vladutu.copilot.ui.MediaRowTile
 import com.vladutu.copilot.ui.NowPlayingStrip
@@ -59,8 +58,9 @@ import kotlinx.coroutines.launch
 /**
  * Discover home: a fixed voice tile (speak a keyword to add it as a category), then
  * one tile per category. Categories are otherwise authored in Pilot; here they can
- * be added by voice, used, or deleted. Nothing on this screen writes to history —
- * discovery is ephemeral by design (spec 2026-06-11-discover).
+ * be added by voice, used (which moves them to the front, via [onUsed]), or deleted.
+ * Nothing on this screen writes to history — discovery is ephemeral by design
+ * (spec 2026-06-11-discover).
  */
 @Composable
 fun DiscoverScreen(
@@ -71,6 +71,9 @@ fun DiscoverScreen(
     onBrowse: (String) -> Unit,
     onAdd: (String) -> Unit,
     onDelete: (String) -> Unit,
+    // Using a category (browse tap or a mix that actually launches) reports it here
+    // so the caller can promote it to the front — same feel as Songs' savedAt order.
+    onUsed: (String) -> Unit,
     onLaunched: () -> Unit,
     nowPlaying: NowPlaying?,
     onBack: () -> Unit,
@@ -96,7 +99,9 @@ fun DiscoverScreen(
                     Toast.makeText(context, mixFailedText, Toast.LENGTH_LONG).show()
                 } else {
                     when (val result = launcher.launchYtMusic(YtMusicUrls.radioMix(seed.videoId))) {
-                        is AppLauncher.Result.Ok -> onLaunched()
+                        // Promote only a mix that launched: a failed one reshuffling the
+                        // grid underneath the error toast would just look broken.
+                        is AppLauncher.Result.Ok -> { onUsed(keyword); onLaunched() }
                         is AppLauncher.Result.Failed ->
                             Toast.makeText(context, result.reason, Toast.LENGTH_LONG).show()
                     }
@@ -145,7 +150,7 @@ fun DiscoverScreen(
                 is DiscoverItem.Category -> MediaRowTile(
                     modifier = Modifier.fillMaxSize(),
                     label = item.keyword,
-                    onClick = { onBrowse(item.keyword) },
+                    onClick = { onUsed(item.keyword); onBrowse(item.keyword) },
                     onLongPress = { pendingDelete = item.keyword },
                     focusRequester = requesters?.get(0),
                     fallbackIcon = Icons.Filled.Explore,
@@ -178,20 +183,11 @@ fun DiscoverScreen(
     }
 
     pendingDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.confirm_delete_title)) },
-            text = { Text(stringResource(R.string.confirm_delete_message, target)) },
-            confirmButton = {
-                TextButton(onClick = { onDelete(target); pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_yes))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.confirm_delete_no))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.confirm_delete_title),
+            text = stringResource(R.string.confirm_delete_message, target),
+            onConfirm = { onDelete(target); pendingDelete = null },
+            onDismiss = { pendingDelete = null },
         )
     }
 }

@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.vladutu.copilot.R
 import com.vladutu.copilot.liked.LikedSong
 import com.vladutu.copilot.nowplaying.NowPlaying
+import com.vladutu.copilot.ui.ConfirmDialog
 import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.ScreenHeader
 
@@ -97,20 +96,11 @@ fun LikedSongsScreen(
     }
 
     if (confirmClear) {
-        AlertDialog(
-            onDismissRequest = { confirmClear = false },
-            title = { Text(stringResource(R.string.clear_all_title)) },
-            text = { Text(stringResource(R.string.clear_all_message)) },
-            confirmButton = {
-                TextButton(onClick = { onClearAll(); confirmClear = false }) {
-                    Text(stringResource(R.string.confirm_delete_yes))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmClear = false }) {
-                    Text(stringResource(R.string.confirm_delete_no))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.clear_all_title),
+            text = stringResource(R.string.clear_all_message),
+            onConfirm = { onClearAll(); confirmClear = false },
+            onDismiss = { confirmClear = false },
         )
     }
 }

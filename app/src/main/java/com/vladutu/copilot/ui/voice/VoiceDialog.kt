@@ -11,9 +11,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +22,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,7 +42,7 @@ import androidx.core.content.ContextCompat
 import com.vladutu.copilot.R
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.isSyntheticKnobDuplicate
-import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import com.vladutu.copilot.ui.DialogKnobButton
 import kotlinx.coroutines.CancellationException
 
 /** What a transcript resolved to: [label] fills the confirm question's %1$s slot. */
@@ -302,32 +297,6 @@ fun <T> VoiceDialog(
             }
         },
     )
-}
-
-/**
- * Dialog button with an unmistakable knob-focus border — M3's default focus tint on
- * a TextButton is too subtle to read at a glance on the car screen.
- */
-@Composable
-private fun DialogKnobButton(
-    label: String,
-    focus: FocusRequester?,
-    onClick: () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    OutlinedButton(
-        onClick = onClick,
-        interactionSource = interaction,
-        border = if (focused) {
-            BorderStroke(LocalTileAppearance.current.focusBorderWidth, MaterialTheme.colorScheme.primary)
-        } else {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        },
-        modifier = if (focus != null) Modifier.focusRequester(focus) else Modifier,
-    ) {
-        Text(label, style = MaterialTheme.typography.titleMedium)
-    }
 }
 
 private const val TAG = "VoiceDialog"

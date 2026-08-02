@@ -369,6 +369,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onDelete = { keyword ->
                     app.applicationScope.launch { app.locator.categoryStore.delete(keyword) }
                 },
+                onUsed = { keyword ->
+                    // Promote to the front so the last-used category is tile #1 next visit.
+                    app.applicationScope.launch { app.locator.categoryStore.add(keyword, first = true) }
+                },
                 onLaunched = onLeftToOtherApp,
                 nowPlaying = nowPlaying,
                 onBack = { nav.popBackStack() },

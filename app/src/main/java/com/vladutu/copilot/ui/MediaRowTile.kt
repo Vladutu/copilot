@@ -43,15 +43,22 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
+import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
 
@@ -79,6 +86,11 @@ private val IconVisualSize = 60.dp
  * pass the ready [thumbnail]. Knob focus: callers attach the FocusRequester they were
  * handed via [focusRequester]; when [trailing] is present it brings its own focus, so
  * the card is knob stop 0 and the trailing element is stop 1.
+ *
+ * [onLongPress] works from touch (combinedClickable) AND from holding the knob's
+ * confirm key — Compose has no hardware long-click, so [KnobLongPress] detects it
+ * from raw key timings on the card's own focus target (the trailing element is a
+ * separate focusable and is deliberately not covered).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -122,6 +134,8 @@ fun MediaRowTile(
     val visualSize = if (coverArt) CoverVisualSize else IconVisualSize
     // Fixed label slot = maxLines lines, so wrapping never shifts the visual's level.
     val labelSlotHeight = with(LocalDensity.current) { appearance.lineHeight.toDp() * maxLines }
+    val longPressTimeout = LocalViewConfiguration.current.longPressTimeoutMillis
+    val knobLongPress = remember(longPressTimeout) { KnobLongPress(longPressTimeout) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Surface(
@@ -136,6 +150,41 @@ fun MediaRowTile(
                     },
                 )
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
+                // Knob long-press: preview runs before combinedClickable's key handling,
+                // so a fired/consumed press never reaches it as a click.
+                .then(
+                    if (onLongPress != null) {
+                        Modifier.onPreviewKeyEvent { event ->
+                            if (event.key != Key.DirectionCenter && event.key != Key.Enter) {
+                                return@onPreviewKeyEvent false
+                            }
+                            val native = event.nativeKeyEvent
+                            val action = when (event.type) {
+                                KeyEventType.KeyDown -> knobLongPress.onDown(
+                                    native.downTime,
+                                    native.eventTime,
+                                    native.repeatCount,
+                                    native.isLongPress,
+                                )
+                                KeyEventType.KeyUp ->
+                                    knobLongPress.onUp(native.downTime, native.eventTime)
+                                else -> KnobPressAction.PASS
+                            }
+                            // Kept at info on purpose: one line per knob event on a deletable
+                            // tile, and it's the only way to see what the carbox/emulator
+                            // actually delivers on a hold (repeats? pulse? flag?).
+                            DiagnosticLog.i(
+                                "KnobLongPress",
+                                "kc=${native.keyCode} action=${native.action} repeat=${native.repeatCount} " +
+                                    "heldMs=${native.eventTime - native.downTime} flag=${native.isLongPress} -> $action",
+                            )
+                            if (action == KnobPressAction.FIRE) onLongPress()
+                            action != KnobPressAction.PASS
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = LocalIndication.current,
