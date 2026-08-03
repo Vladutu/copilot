@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.29.1] - 2026-08-03
+
+### Fixed
+- Knob long-press via the carbox's BUTTON_1 hold channel
+
 ## [0.29.0] - 2026-08-02
 
 ### Added
@@ -438,6 +443,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.29.1]: https://github.com/Vladutu/copilot/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/Vladutu/copilot/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/Vladutu/copilot/compare/v0.27.2...v0.28.0
 [0.27.2]: https://github.com/Vladutu/copilot/compare/v0.27.1...v0.27.2
