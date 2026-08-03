@@ -1,6 +1,7 @@
 package com.vladutu.copilot.ui
 
 import android.content.pm.PackageManager
+import android.view.KeyEvent as AndroidKeyEvent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -32,6 +33,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +64,9 @@ import androidx.core.graphics.createBitmap
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
 import com.vladutu.copilot.ui.theme.LocalTileAppearance
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Real cover art fills a big square; everything else (app icon, Material/drawable glyph)
 // stays a small icon. Sized for glancing while driving (see redesign-spec §2a).
@@ -87,10 +93,13 @@ private val IconVisualSize = 60.dp
  * handed via [focusRequester]; when [trailing] is present it brings its own focus, so
  * the card is knob stop 0 and the trailing element is stop 1.
  *
- * [onLongPress] works from touch (combinedClickable) AND from holding the knob's
- * confirm key — Compose has no hardware long-click, so [KnobLongPress] detects it
- * from raw key timings on the card's own focus target (the trailing element is a
- * separate focusable and is deliberately not covered).
+ * [onLongPress] works from touch (combinedClickable) AND from holding the knob.
+ * The carbox splits a knob press into an instant DPAD_CENTER pulse plus a
+ * BUTTON_1 pair that carries the real hold duration (see [KnobHoldTracker]), so
+ * on tiles with a long-press action the card consumes those keys outright and
+ * drives onClick/onLongPress from the tracker — Compose's own key handling would
+ * click on the pulse before the hold length is knowable. The trailing element is
+ * a separate focusable and is deliberately not covered.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -135,7 +144,38 @@ fun MediaRowTile(
     // Fixed label slot = maxLines lines, so wrapping never shifts the visual's level.
     val labelSlotHeight = with(LocalDensity.current) { appearance.lineHeight.toDp() * maxLines }
     val longPressTimeout = LocalViewConfiguration.current.longPressTimeoutMillis
-    val knobLongPress = remember(longPressTimeout) { KnobLongPress(longPressTimeout) }
+    val knobTracker = remember(longPressTimeout) { KnobHoldTracker(longPressTimeout) }
+    val knobTimers = remember { KnobHoldTimers() }
+    val knobScope = rememberCoroutineScope()
+    // Timer callbacks run after arbitrary recompositions — always call the latest lambdas.
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+
+    fun deliver(output: KnobHoldOutput) {
+        when (output) {
+            KnobHoldOutput.CLICK -> currentOnClick()
+            KnobHoldOutput.LONG_PRESS -> currentOnLongPress?.invoke()
+            KnobHoldOutput.NONE -> Unit
+        }
+    }
+
+    fun runKnobResult(result: KnobHoldResult): Boolean {
+        if (result.cancelTimers) knobTimers.cancel()
+        deliver(result.output)
+        if (result.startFallback) {
+            knobTimers.fallback = knobScope.launch {
+                delay(KnobHoldTracker.FALLBACK_MS)
+                deliver(knobTracker.onFallbackElapsed())
+            }
+        }
+        result.startLongPressInMs?.let { ms ->
+            knobTimers.longPress = knobScope.launch {
+                delay(ms)
+                deliver(knobTracker.onLongPressElapsed())
+            }
+        }
+        return true
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         Surface(
@@ -151,35 +191,37 @@ fun MediaRowTile(
                 )
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 // Knob long-press: preview runs before combinedClickable's key handling,
-                // so a fired/consumed press never reaches it as a click.
+                // so the confirm keys never reach it as a click — the tracker owns them.
                 .then(
                     if (onLongPress != null) {
                         Modifier.onPreviewKeyEvent { event ->
-                            if (event.key != Key.DirectionCenter && event.key != Key.Enter) {
-                                return@onPreviewKeyEvent false
-                            }
                             val native = event.nativeKeyEvent
-                            val action = when (event.type) {
-                                KeyEventType.KeyDown -> knobLongPress.onDown(
+                            val isCenter = event.key == Key.DirectionCenter || event.key == Key.Enter
+                            val isButton1 = native.keyCode == AndroidKeyEvent.KEYCODE_BUTTON_1
+                            if (!isCenter && !isButton1) return@onPreviewKeyEvent false
+                            val result = when {
+                                isCenter && event.type == KeyEventType.KeyDown -> knobTracker.onCenterDown(
                                     native.downTime,
                                     native.eventTime,
                                     native.repeatCount,
                                     native.isLongPress,
                                 )
-                                KeyEventType.KeyUp ->
-                                    knobLongPress.onUp(native.downTime, native.eventTime)
-                                else -> KnobPressAction.PASS
+                                isCenter && event.type == KeyEventType.KeyUp ->
+                                    knobTracker.onCenterUp(native.downTime, native.eventTime)
+                                isButton1 && event.type == KeyEventType.KeyDown ->
+                                    knobTracker.onButton1Down(native.eventTime)
+                                isButton1 && event.type == KeyEventType.KeyUp ->
+                                    knobTracker.onButton1Up()
+                                else -> return@onPreviewKeyEvent false
                             }
                             // Kept at info on purpose: one line per knob event on a deletable
-                            // tile, and it's the only way to see what the carbox/emulator
-                            // actually delivers on a hold (repeats? pulse? flag?).
+                            // tile — the only way to see what the carbox actually delivers.
                             DiagnosticLog.i(
                                 "KnobLongPress",
                                 "kc=${native.keyCode} action=${native.action} repeat=${native.repeatCount} " +
-                                    "heldMs=${native.eventTime - native.downTime} flag=${native.isLongPress} -> $action",
+                                    "heldMs=${native.eventTime - native.downTime} flag=${native.isLongPress} -> $result",
                             )
-                            if (action == KnobPressAction.FIRE) onLongPress()
-                            action != KnobPressAction.PASS
+                            runKnobResult(result)
                         }
                     } else {
                         Modifier
@@ -316,6 +358,19 @@ private fun TileVisual(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/** The two live timers a tracked knob press can have; cancelled together on any reset. */
+private class KnobHoldTimers {
+    var fallback: Job? = null
+    var longPress: Job? = null
+
+    fun cancel() {
+        fallback?.cancel()
+        longPress?.cancel()
+        fallback = null
+        longPress = null
     }
 }
 

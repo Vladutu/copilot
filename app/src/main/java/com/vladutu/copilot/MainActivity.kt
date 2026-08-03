@@ -153,7 +153,12 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (isSyntheticKnobDuplicate(event)) return true
-        return super.dispatchKeyEvent(event)
+        val handled = super.dispatchKeyEvent(event)
+        // BUTTON_1 is the knob's hold channel (see KnobInput.kt) and must reach the
+        // tiles — but when no tile consumes it (non-deletable stops, dialogs) it must
+        // not fall through to the framework's unhandled-key path, which can synthesize
+        // fallback keys from gamepad buttons. Claim it here instead.
+        return handled || event.keyCode == KeyEvent.KEYCODE_BUTTON_1
     }
 
     private fun leaveToOtherApp() {
