@@ -19,6 +19,10 @@ object BubbleController {
     fun requestShow(context: Context) {
         pendingShow = true
         if (state == State.SUPPRESSED_WHILE_FOREGROUND) return
+        // Copilot's activity is already in the background (remote launch while another app
+        // is on screen), so no onPause() will follow to flip the state: mark it visible
+        // here, or the BACK grabber sees HIDDEN and passes the press through to Waze.
+        state = State.VISIBLE
         startService(context)
     }
 
@@ -37,9 +41,16 @@ object BubbleController {
     }
 
     fun clear(context: Context) {
+        onDismissed()
+        stopService(context)
+    }
+
+    /** The driver dismissed the bubble from its notification; the service is already
+     *  stopping itself, so only the state is reset here. Forgetting the pending request
+     *  means a later pause of MainActivity does not resurrect the bubble. */
+    fun onDismissed() {
         pendingShow = false
         state = State.HIDDEN
-        stopService(context)
     }
 
     private fun startService(context: Context) {
