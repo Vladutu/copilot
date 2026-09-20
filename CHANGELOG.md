@@ -5,6 +5,26 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.29.2] - 2026-09-20
+
+### Fixed
+- Arm BACK grabber when bubble is requested after Copilot paused
+
+### Build
+- Bump org.robolectric:robolectric from 4.16.1 to 4.17 (#40)
+- Bump kotlin from 2.4.10 to 2.4.20 (#39)
+- Bump androidx.navigation:navigation-compose (#38)
+- Bump androidx.compose:compose-bom (#37)
+- Bump com.android.application from 9.3.2 to 9.4.0 (#36)
+- Bump androidx.navigation:navigation-compose (#35)
+- Bump actions/setup-java from 5 to 6
+- Bump com.android.application from 9.3.1 to 9.3.2 (#33)
+- Bump gradle-wrapper from 9.7.0 to 9.7.1 (#32)
+- Bump androidx.compose:compose-bom (#31)
+- Bump okhttp from 5.4.0 to 5.5.0 (#29)
+- Bump org.json:json from 20260719 to 20260814
+- Bump gradle-wrapper from 9.6.1 to 9.7.0 (#28)
+
 ## [0.29.1] - 2026-08-03
 
 ### Fixed
@@ -443,6 +463,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.29.2]: https://github.com/Vladutu/copilot/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/Vladutu/copilot/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/Vladutu/copilot/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/Vladutu/copilot/compare/v0.27.2...v0.28.0
