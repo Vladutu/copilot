@@ -76,6 +76,8 @@
     <string name="settings_title">Setări</string>
     <string name="settings_autostart_label">Pornește Copilot când pornește mașina</string>
     <string name="settings_split_screen_label">Deschide aplicațiile în ecran împărțit</string>
+    <string name="settings_newpipe_label">Redă YouTube Music prin NewPipe</string>
+    <string name="settings_newpipe_hint">Necesită NewPipe instalat, cu „Acțiunea preferată la deschidere” setată pe player în fundal. Redă fără cont Google; o singură melodie pornește mixul ei.</string>
     <string name="settings_voice_language">Limba pentru comenzi vocale</string>
     <string name="settings_tiles_label">Carduri</string>
     <string name="settings_tile_font_size">Mărimea textului pe carduri</string>
@@ -137,6 +139,7 @@
     <string name="launch_missing_ytmusic">YouTube Music nu e instalat</string>
     <string name="launch_missing_youtube">YouTube nu e instalat</string>
     <string name="launch_missing_soundcloud">SoundCloud nu e instalat</string>
+    <string name="launch_missing_newpipe">NewPipe nu e instalat</string>
     <string name="launch_missing_vlc">VLC nu e instalat</string>
     <string name="launch_missing_generic">aplicația țintă nu e instalată</string>
     <string name="launch_not_installed">nu e instalată</string>

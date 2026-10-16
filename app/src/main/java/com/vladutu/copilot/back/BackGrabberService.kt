@@ -121,7 +121,7 @@ class BackGrabberService : AccessibilityService() {
         AutoSwitchBack.onForeground(pkg)
         SplitScreen.onForeground(pkg)
 
-        if (pkg in AutoSwitchBack.MUSIC_PKGS &&
+        if (AutoSwitchBack.isMusicApp(pkg) &&
             AutoSwitchBack.shouldScheduleOnMusicAppShown() &&
             !switchBackPending
         ) {
@@ -382,7 +382,7 @@ class BackGrabberService : AccessibilityService() {
      *  the music apps, or any app with a launcher activity. Everything else (overlays, system
      *  UI, IMEs) is ignored so it can't become the restore target or look like the user moved. */
     private fun isRestorable(pkg: String): Boolean {
-        if (pkg == applicationContext.packageName || pkg in AutoSwitchBack.MUSIC_PKGS) return true
+        if (pkg == applicationContext.packageName || AutoSwitchBack.isMusicApp(pkg)) return true
         restorableCache[pkg]?.let { return it }
         val restorable = applicationContext.packageManager.getLaunchIntentForPackage(pkg) != null
         restorableCache[pkg] = restorable

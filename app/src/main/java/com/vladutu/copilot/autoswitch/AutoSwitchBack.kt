@@ -1,5 +1,7 @@
 package com.vladutu.copilot.autoswitch
 
+import com.vladutu.copilot.launch.NewPipeRoute
+
 /**
  * Process-wide coordinator for "after the music app (YT Music or SoundCloud) loads, switch
  * back to where we were".
@@ -23,11 +25,18 @@ object AutoSwitchBack {
     const val YT_MUSIC_PKG = "com.google.android.apps.youtube.music"
     const val SOUNDCLOUD_PKG = "com.soundcloud.android"
     const val YOUTUBE_PKG = "com.google.android.youtube"
+    const val NEWPIPE_PKG = "org.schabi.newpipe"
 
     /** The media apps we launch deep links into. YouTube is here for the shared consumers
      *  (now-playing strip, moved-away checks) even though a youtube launch never arms this
      *  coordinator — a video is watched in the foreground, so there is nothing to return from. */
-    val MUSIC_PKGS = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG)
+    val MUSIC_PKGS = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG, NEWPIPE_PKG)
+
+    /** Whether [pkg] is one of our music apps. NewPipe only counts while the Settings
+     *  "YouTube Music through NewPipe" toggle is on — with it off, Copilot must behave
+     *  exactly as before NewPipe support existed, even if NewPipe happens to be running. */
+    fun isMusicApp(pkg: String?): Boolean =
+        pkg != null && pkg in MUSIC_PKGS && (pkg != NEWPIPE_PKG || NewPipeRoute.enabled)
 
     /** Delay after the music app's window appears before we pull focus back, giving it
      *  time to process the deep link and start playback (mirrors Waze deep-link timing). */
@@ -57,7 +66,7 @@ object AutoSwitchBack {
     /** Snapshot the return target and start the arm window. Call just before launching the music app. */
     fun arm() {
         val fg = currentForeground
-        targetPackage = if (fg == null || fg in MUSIC_PKGS) null else fg
+        targetPackage = if (fg == null || isMusicApp(fg)) null else fg
         armedAtMillis = clock()
     }
 
@@ -80,7 +89,7 @@ object AutoSwitchBack {
         // ownPackage is set by the service in onServiceConnected; since this method only runs
         // from the service's own settle-timer, ownPackage is non-null by the time we get here.
         val fg = currentForeground
-        val movedAway = fg != null && fg !in MUSIC_PKGS && fg != ownPackage && fg != target
+        val movedAway = fg != null && !isMusicApp(fg) && fg != ownPackage && fg != target
         return if (movedAway) null else target
     }
 

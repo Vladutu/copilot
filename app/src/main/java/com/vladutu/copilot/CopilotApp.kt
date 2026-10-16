@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import com.vladutu.copilot.di.ServiceLocator
 import com.vladutu.copilot.diagnostics.DiagnosticLog
 import com.vladutu.copilot.settings.AppLocale
+import com.vladutu.copilot.launch.NewPipeRoute
 import com.vladutu.copilot.split.SplitScreen
 import kotlinx.coroutines.launch
 import java.io.PrintWriter
@@ -34,6 +35,10 @@ class CopilotApp : Application() {
         SplitScreen.ownPackage = packageName
         applicationScope.launch {
             locator.settingsStore.splitScreenFlow.collect { SplitScreen.enabled = it }
+        }
+        // Same mirroring for the "YouTube Music through NewPipe" toggle, read by AppLauncher.
+        applicationScope.launch {
+            locator.settingsStore.ytMusicViaNewPipeFlow.collect { NewPipeRoute.enabled = it }
         }
         // Channel name/description in the chosen app language (the Application context
         // itself follows the device locale). Re-registering with a new name is allowed,

@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -177,5 +178,14 @@ class SettingsStoreTest {
     @Test fun `setWazeGoLabel round-trips`() = runTest {
         store.setWazeGoLabel("Start")
         assertEquals("Start", store.wazeGoLabelFlow.first())
+    }
+
+    @Test fun `ytmusic via newpipe defaults to false`() = runTest {
+        assertFalse(store.ytMusicViaNewPipeFlow.first())
+    }
+
+    @Test fun `ytmusic via newpipe persists`() = runTest {
+        store.setYtMusicViaNewPipe(true)
+        assertTrue(store.ytMusicViaNewPipeFlow.first())
     }
 }

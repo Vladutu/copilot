@@ -76,6 +76,8 @@
     <string name="settings_title">Settings</string>
     <string name="settings_autostart_label">Start Copilot when the car turns on</string>
     <string name="settings_split_screen_label">Open apps in split screen</string>
+    <string name="settings_newpipe_label">Play YouTube Music through NewPipe</string>
+    <string name="settings_newpipe_hint">Needs NewPipe installed with “Preferred open action” set to Background player. Plays without a Google account; a single song starts its Mix.</string>
     <string name="settings_voice_language">Voice input language</string>
     <string name="settings_tiles_label">Tiles</string>
     <string name="settings_tile_font_size">Tile text size</string>
@@ -137,6 +139,7 @@
     <string name="launch_missing_ytmusic">YouTube Music not installed</string>
     <string name="launch_missing_youtube">YouTube not installed</string>
     <string name="launch_missing_soundcloud">SoundCloud not installed</string>
+    <string name="launch_missing_newpipe">NewPipe not installed</string>
     <string name="launch_missing_vlc">VLC not installed</string>
     <string name="launch_missing_generic">target app not installed</string>
     <string name="launch_not_installed">not installed</string>

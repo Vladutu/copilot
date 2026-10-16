@@ -113,4 +113,13 @@ class AutoSwitchBackTest {
         assertFalse(AutoSwitchBack.isArmed())
         assertNull(AutoSwitchBack.resolveTargetAtFire())
     }
+
+    @Test fun `NewPipe counts as a music app only while the NewPipe setting is on`() {
+        com.vladutu.copilot.launch.NewPipeRoute.enabled = true
+        assertTrue(AutoSwitchBack.isMusicApp(com.vladutu.copilot.launch.NewPipeRoute.PKG))
+        com.vladutu.copilot.launch.NewPipeRoute.enabled = false
+        assertFalse(AutoSwitchBack.isMusicApp(com.vladutu.copilot.launch.NewPipeRoute.PKG))
+        assertTrue(AutoSwitchBack.isMusicApp(AutoSwitchBack.YT_MUSIC_PKG))
+        assertFalse(AutoSwitchBack.isMusicApp(null))
+    }
 }

@@ -418,6 +418,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = false)
             val splitScreen by app.locator.settingsStore.splitScreenFlow
                 .collectAsStateWithLifecycle(initialValue = false)
+            val ytMusicViaNewPipe by app.locator.settingsStore.ytMusicViaNewPipeFlow
+                .collectAsStateWithLifecycle(initialValue = false)
             val appLanguage by app.locator.settingsStore.appLanguageFlow
                 .collectAsStateWithLifecycle(initialValue = AppLanguages.DEFAULT_ID)
             val voiceLanguage by app.locator.settingsStore.voiceLanguageFlow
@@ -454,6 +456,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 splitScreen = splitScreen,
                 onSplitScreenChange = { enabled ->
                     app.applicationScope.launch { app.locator.settingsStore.setSplitScreen(enabled) }
+                },
+                ytMusicViaNewPipe = ytMusicViaNewPipe,
+                onYtMusicViaNewPipeChange = { enabled ->
+                    app.applicationScope.launch { app.locator.settingsStore.setYtMusicViaNewPipe(enabled) }
                 },
                 tileFontSize = tileFontSize,
                 onTileFontSizeChange = { sp ->

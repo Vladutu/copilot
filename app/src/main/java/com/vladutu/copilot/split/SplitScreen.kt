@@ -1,5 +1,8 @@
 package com.vladutu.copilot.split
 
+import com.vladutu.copilot.autoswitch.AutoSwitchBack
+import com.vladutu.copilot.launch.NewPipeRoute
+
 /**
  * Process-wide split-screen launch policy: decides whether a launch should carry
  * FLAG_ACTIVITY_LAUNCH_ADJACENT (land in a split pane) or stay a plain fullscreen launch.
@@ -36,12 +39,18 @@ object SplitScreen {
     const val SOUNDCLOUD_PKG = "com.soundcloud.android"
     const val YOUTUBE_PKG = "com.google.android.youtube"
     const val VLC_PKG = "org.videolan.vlc"
+    const val NEWPIPE_PKG = "org.schabi.newpipe"
 
     /** Nav apps: the pane a music launch pairs against. */
     val NAV_PKGS = setOf(WAZE_PKG, MAPS_PKG)
 
     /** Apps a from-Copilot launch may two-step pair with a nav app (media side of the split). */
-    val PAIRS_WITH_NAV = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG, VLC_PKG)
+    val PAIRS_WITH_NAV = setOf(YT_MUSIC_PKG, SOUNDCLOUD_PKG, YOUTUBE_PKG, VLC_PKG, NEWPIPE_PKG)
+
+    /** Whether [pkg] is a media-side split partner. NewPipe only while the Settings
+     *  "YouTube Music through NewPipe" toggle is on (see [AutoSwitchBack.isMusicApp]). */
+    fun pairsWithNav(pkg: String): Boolean =
+        pkg in PAIRS_WITH_NAV && (pkg != NEWPIPE_PKG || NewPipeRoute.enabled)
 
     /** Mirrors the Settings "split screen" toggle; kept current by CopilotApp. Defaults off:
      *  every launch stays fullscreen until the driver opts in. */
@@ -70,7 +79,7 @@ object SplitScreen {
     /** Record a foreground change (called from the accessibility service, restorable-filtered). */
     fun onForeground(pkg: String) {
         if (pkg in NAV_PKGS) lastNavApp = pkg
-        if (pkg in PAIRS_WITH_NAV) lastMusicApp = pkg
+        if (pairsWithNav(pkg)) lastMusicApp = pkg
     }
 
     /** Whether [pkg] currently has a window on screen (fullscreen or split pane). */
@@ -114,7 +123,7 @@ object SplitScreen {
      */
     fun repairNavFor(targetPkg: String): String? {
         if (!enabled) return null
-        if (targetPkg !in PAIRS_WITH_NAV) return null
+        if (!pairsWithNav(targetPkg)) return null
         if (isSplitActive()) return null
         return visiblePackages.firstOrNull { it in NAV_PKGS && it != targetPkg } ?: lastNavApp
     }

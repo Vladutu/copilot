@@ -217,4 +217,12 @@ class SplitScreenTest {
         const val YTM = SplitScreen.YT_MUSIC_PKG
         const val YOUTUBE = SplitScreen.YOUTUBE_PKG
     }
+
+    @Test fun `NewPipe may pair with a nav app only while the NewPipe setting is on`() {
+        com.vladutu.copilot.launch.NewPipeRoute.enabled = true
+        assertTrue(SplitScreen.pairsWithNav(com.vladutu.copilot.launch.NewPipeRoute.PKG))
+        com.vladutu.copilot.launch.NewPipeRoute.enabled = false
+        assertFalse(SplitScreen.pairsWithNav(com.vladutu.copilot.launch.NewPipeRoute.PKG))
+        assertTrue(SplitScreen.pairsWithNav(SplitScreen.YT_MUSIC_PKG))
+    }
 }

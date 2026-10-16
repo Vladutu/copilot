@@ -125,6 +125,16 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_SPLIT_SCREEN] = enabled }
     }
 
+    /** Whether `ytmusic` commands open NewPipe (background, no account) instead of the
+     *  YouTube Music app. Defaults off. Mirrored into [com.vladutu.copilot.launch.NewPipeRoute]. */
+    val ytMusicViaNewPipeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_YTMUSIC_VIA_NEWPIPE] ?: false
+    }
+
+    suspend fun setYtMusicViaNewPipe(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_YTMUSIC_VIA_NEWPIPE] = enabled }
+    }
+
     /** Whether a knob press taps Waze's "Go now". Defaults on. */
     val wazeGoEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_WAZE_GO_ENABLED] ?: true
@@ -197,6 +207,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val KEY_MENU_PAGE_SIZE = intPreferencesKey("menu_page_size")
         val KEY_LIST_PAGE_SIZE = intPreferencesKey("list_page_size")
         val KEY_SPLIT_SCREEN = booleanPreferencesKey("split_screen_launches")
+        val KEY_YTMUSIC_VIA_NEWPIPE = booleanPreferencesKey("ytmusic_via_newpipe")
         val KEY_WAZE_GO_ENABLED = booleanPreferencesKey("waze_go_enabled")
         val KEY_WAZE_GO_LABEL = stringPreferencesKey("waze_go_label")
         val KEY_VOICE_LANGUAGE = stringPreferencesKey("voice_language")

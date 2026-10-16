@@ -34,6 +34,16 @@ away. The on-screen UI is built for driving: a knob-navigable grid, no typing.
   Copilot back once playback settles; a floating bubble (`BubbleService`) and an
   accessibility service (`BackGrabberService`, intercepts the hardware BACK key)
   keep Copilot reachable.
+- **NewPipe mode (optional).** Settings → *Play YouTube Music through NewPipe*
+  (off by default). `ytmusic` commands then open [NewPipe](https://newpipe.net)
+  instead of the YouTube Music app: audio-only background playback, no Google
+  account, no Premium. A single song is launched as its YouTube Mix
+  (`playlist?list=RD<videoId>`) so playback keeps going; playlists pass through.
+  Pilot's `shuffle=1` marker is applied over NewPipe's media session
+  (`ShuffleRequest`: shuffle on + skip, so the opening track is random; ordered
+  launches switch shuffle off). Pilot and saved history are unchanged — the
+  rewrite lives in `launch/NewPipeRoute`. NewPipe must have *Preferred "open"
+  action* set to **Background player**.
 - **Status screen** — connection health, recent events, clock skew vs. the phone,
   downloadable diagnostic logs, and grant buttons for missing permissions.
 

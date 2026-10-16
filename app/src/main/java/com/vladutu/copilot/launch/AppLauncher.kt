@@ -63,13 +63,19 @@ class AppLauncher(
         Form.RADIO -> "radio"
     }
 
-    private fun launchUrl(cmd: String, url: String): Result {
+    private fun launchUrl(cmd: String, rawUrl: String): Result {
+        // Settings "YouTube Music through NewPipe": same command, different player. The
+        // URL is rewritten for NewPipe (canonical host; a single song becomes its Mix so
+        // playback keeps going) — everything downstream (auto-return, split policy) treats
+        // NewPipe as the music app of the command.
+        val viaNewPipe = cmd == "ytmusic" && NewPipeRoute.enabled
+        val url = if (viaNewPipe) NewPipeRoute.rewrite(rawUrl) else rawUrl
         // Maps share URLs (maps.app.goo.gl/...) are Firebase App Links — Maps' package
         // doesn't claim them in intent-filters, only via verified App Links at the OS
         // resolver level. So for cmd=maps we leave the package unset and let Android
         // route the URL; for ytmusic/waze we pin the package to prevent a browser fallback.
         val targetPkg: String? = when (cmd) {
-            "ytmusic" -> YT_MUSIC_PKG
+            "ytmusic" -> if (viaNewPipe) NewPipeRoute.PKG else YT_MUSIC_PKG
             "youtube" -> YOUTUBE_PKG
             "soundcloud" -> SOUNDCLOUD_PKG
             "waze" -> WAZE_PKG
@@ -78,7 +84,7 @@ class AppLauncher(
         }
         val missingMsg = context.getString(
             when (cmd) {
-                "ytmusic" -> R.string.launch_missing_ytmusic
+                "ytmusic" -> if (viaNewPipe) R.string.launch_missing_newpipe else R.string.launch_missing_ytmusic
                 "youtube" -> R.string.launch_missing_youtube
                 "soundcloud" -> R.string.launch_missing_soundcloud
                 "waze" -> R.string.launch_missing_waze
@@ -104,7 +110,15 @@ class AppLauncher(
         // or SoundCloud; cmds imply form SONG/PLAYLIST via Message validation). Radio (VLC,
         // background), maps/waze (nav stays foreground) and youtube (a video is watched, not
         // background-listened) are deliberately not armed.
-        return dispatch(intent, policyPkg, missingMsg, armAutoSwitch = cmd == "ytmusic" || cmd == "soundcloud")
+        val result = dispatch(intent, policyPkg, missingMsg, armAutoSwitch = cmd == "ytmusic" || cmd == "soundcloud")
+        // NewPipe ignores Pilot's `shuffle=1`; the media listener applies the shuffle state
+        // over NewPipe's session once the new queue is loading (see ShuffleRequest).
+        if (viaNewPipe && result is Result.Ok) {
+            val shuffle = NewPipeRoute.wantsShuffle(rawUrl)
+            ShuffleRequest.arm(NewPipeRoute.PKG, shuffle)
+            DiagnosticLog.i(TAG, "newpipe launch: shuffle request armed shuffle=$shuffle")
+        }
+        return result
     }
 
     /**

@@ -42,6 +42,8 @@ class AppLauncherTest {
         SplitScreen.reset()
         SplitScreen.ownPackage = context.packageName
         SplitRepair.clear()
+        NewPipeRoute.enabled = false
+        ShuffleRequest.clear()
     }
 
     private fun msg(cmd: String, form: Form, url: String) =
@@ -384,5 +386,86 @@ class AppLauncherTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
         assertEquals(AppLauncher.YOUTUBE_PKG, SplitRepair.pendingMusic())
+    }
+
+    @Test fun `newpipe on - ytmusic song goes to NewPipe as its Mix`() {
+        NewPipeRoute.enabled = true
+        val res = launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+        assertEquals("https://www.youtube.com/playlist?list=RDabc", intent.data.toString())
+    }
+
+    @Test fun `newpipe on - shuffled playlist arms a shuffle request`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=PLx&shuffle=1"))
+        assertEquals(true, ShuffleRequest.pending(NewPipeRoute.PKG))
+    }
+
+    @Test fun `newpipe on - ordered playlist arms an unshuffle request`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=PLx"))
+        assertEquals(false, ShuffleRequest.pending(NewPipeRoute.PKG))
+    }
+
+    @Test fun `newpipe on - song Mix arms an unshuffle request`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertEquals(false, ShuffleRequest.pending(NewPipeRoute.PKG))
+    }
+
+    @Test fun `newpipe off - shuffled playlist arms nothing`() {
+        launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=PLx&shuffle=1"))
+        assertNull(ShuffleRequest.pending(NewPipeRoute.PKG))
+    }
+
+    @Test fun `newpipe on - ytmusic playlist goes to NewPipe with the host swapped`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/playlist?list=PLx"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+        assertEquals("https://www.youtube.com/playlist?list=PLx", intent.data.toString())
+    }
+
+    @Test fun `newpipe on - legacy song replay also goes to NewPipe`() {
+        NewPipeRoute.enabled = true
+        val item = SavedItem(Form.SONG, "abc", null, null, "https://music.youtube.com/watch?v=abc", savedAt = 0)
+        launcher.replay(item)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+    }
+
+    @Test fun `newpipe on - still arms autoswitch for ytmusic`() {
+        NewPipeRoute.enabled = true
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertTrue(AutoSwitchBack.isArmed())
+    }
+
+    @Test fun `newpipe on - youtube and soundcloud commands are untouched`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        assertEquals(AppLauncher.YOUTUBE_PKG, shadowOf(context as android.app.Application).nextStartedActivity.`package`)
+        launcher.launch(msg("soundcloud", Form.SONG, "https://soundcloud.com/a/b"))
+        assertEquals(AppLauncher.SOUNDCLOUD_PKG, shadowOf(context as android.app.Application).nextStartedActivity.`package`)
+    }
+
+    @Test fun `newpipe on - split over fullscreen nav arms the repair with NewPipe as the music app`() {
+        NewPipeRoute.enabled = true
+        SplitScreen.enabled = true
+        SplitScreen.onForeground(AppLauncher.WAZE_PKG)
+        SplitScreen.onWindows(visible = setOf(AppLauncher.WAZE_PKG), focused = AppLauncher.WAZE_PKG)
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        assertEquals(AppLauncher.WAZE_PKG, SplitRepair.pendingNav())
+        assertEquals(NewPipeRoute.PKG, SplitRepair.pendingMusic())
+    }
+
+    @Test fun `newpipe off - ytmusic song still goes to YouTube Music with the original url`() {
+        launcher.launch(msg("ytmusic", Form.SONG, "https://music.youtube.com/watch?v=abc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(AppLauncher.YT_MUSIC_PKG, intent.`package`)
+        assertEquals("https://music.youtube.com/watch?v=abc", intent.data.toString())
     }
 }

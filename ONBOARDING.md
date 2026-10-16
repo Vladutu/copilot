@@ -49,6 +49,25 @@ If anything fails, the Copilot status screen tells you which step:
 - Command appears but nothing happens and no error → revisit step 3 anyway;
   the `SecurityException` is not always thrown — silent failure is also possible.
 
+## Optional: YouTube Music without Premium (NewPipe)
+
+The YouTube Music app stops playing as soon as it leaves the foreground unless
+the account has Premium — and Copilot's auto-return backgrounds it after every
+command. To play without Premium (and without any Google account):
+
+1. Sideload [NewPipe](https://newpipe.net) on the box and open it once.
+2. In NewPipe: drawer (☰) → **Settings** → *Video and audio* →
+   **Preferred "open" action** → *Background player*. Also set
+   **Minimize on app switch** → *Background*. Optionally turn on
+   **Auto-queue next stream** as a fallback.
+3. In Copilot: **Settings → Play YouTube Music through NewPipe** → on.
+
+Pilot needs no change. Song commands open as a YouTube Mix (endless, on-genre
+queue starting with the requested song). Shuffled playlists are shuffled through
+NewPipe's media session right after launch (needs the notification access from
+step 4), starting on a random track. Now-playing, Liked Songs, auto-return and
+split screen work with NewPipe like with YT Music.
+
 ## Configuration before first build
 
 Both apps need the same ntfy topic. Before building:

@@ -86,6 +86,8 @@ fun SettingsScreen(
     onAutoStartChange: (Boolean) -> Unit,
     splitScreen: Boolean,
     onSplitScreenChange: (Boolean) -> Unit,
+    ytMusicViaNewPipe: Boolean,
+    onYtMusicViaNewPipeChange: (Boolean) -> Unit,
     tileFontSize: Float,
     onTileFontSizeChange: (Float) -> Unit,
     tileBorderWidth: Float,
@@ -215,6 +217,15 @@ fun SettingsScreen(
                 label = stringResource(R.string.settings_split_screen_label),
                 checked = splitScreen,
                 onCheckedChange = onSplitScreenChange,
+            )
+            // Off = ytmusic commands open the YouTube Music app (needs Premium for background
+            // play). On = they open NewPipe: audio-only, background, no Google account; a
+            // single song is launched as its Mix so playback continues — see launch/NewPipeRoute.kt.
+            SwitchRow(
+                label = stringResource(R.string.settings_newpipe_label),
+                checked = ytMusicViaNewPipe,
+                onCheckedChange = onYtMusicViaNewPipeChange,
+                hint = stringResource(R.string.settings_newpipe_hint),
             )
             // Language the Discover voice tile listens in — its own setting because the
             // recognizer otherwise follows the device locale (the carbox runs English).
@@ -477,17 +488,27 @@ private fun DropdownRow(
 }
 
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    hint: String? = null,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            if (hint != null) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
