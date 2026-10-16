@@ -5,6 +5,19 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.30.0] - 2026-10-16
+
+### Added
+- Optional YouTube Music playback through NewPipe
+
+### Build
+- Bump gradle-wrapper from 9.8.0 to 9.8.1 (#46)
+- Bump kotlin from 2.4.20 to 2.4.21 (#45)
+- Bump androidx.core:core-ktx from 1.13.1 to 1.19.1 (#43)
+- Bump androidx.navigation:navigation-compose (#44)
+- Bump gradle-wrapper from 9.7.1 to 9.8.0 (#42)
+- Bump com.android.application from 9.4.0 to 9.4.1 (#41)
+
 ## [0.29.2] - 2026-09-20
 
 ### Fixed
@@ -463,6 +476,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.30.0]: https://github.com/Vladutu/copilot/compare/v0.29.2...v0.30.0
 [0.29.2]: https://github.com/Vladutu/copilot/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/Vladutu/copilot/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/Vladutu/copilot/compare/v0.28.0...v0.29.0
