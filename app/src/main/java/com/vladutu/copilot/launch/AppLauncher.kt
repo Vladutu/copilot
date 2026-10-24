@@ -64,19 +64,20 @@ class AppLauncher(
     }
 
     private fun launchUrl(cmd: String, rawUrl: String): Result {
-        // Settings "YouTube Music through NewPipe": same command, different player. The
+        // Settings "YouTube through NewPipe": same command, different player. A ytmusic
         // URL is rewritten for NewPipe (canonical host; a single song becomes its Mix so
-        // playback keeps going) — everything downstream (auto-return, split policy) treats
-        // NewPipe as the music app of the command.
-        val viaNewPipe = cmd == "ytmusic" && NewPipeRoute.enabled
-        val url = if (viaNewPipe) NewPipeRoute.rewrite(rawUrl) else rawUrl
+        // playback keeps going); a youtube URL is passed through unchanged — the driver
+        // asked for that exact video or playlist. Everything downstream (auto-return,
+        // split policy) treats NewPipe as the media app of the command.
+        val viaNewPipe = (cmd == "ytmusic" || cmd == "youtube") && NewPipeRoute.enabled
+        val url = if (viaNewPipe && cmd == "ytmusic") NewPipeRoute.rewrite(rawUrl) else rawUrl
         // Maps share URLs (maps.app.goo.gl/...) are Firebase App Links — Maps' package
         // doesn't claim them in intent-filters, only via verified App Links at the OS
         // resolver level. So for cmd=maps we leave the package unset and let Android
         // route the URL; for ytmusic/waze we pin the package to prevent a browser fallback.
         val targetPkg: String? = when (cmd) {
             "ytmusic" -> if (viaNewPipe) NewPipeRoute.PKG else YT_MUSIC_PKG
-            "youtube" -> YOUTUBE_PKG
+            "youtube" -> if (viaNewPipe) NewPipeRoute.PKG else YOUTUBE_PKG
             "soundcloud" -> SOUNDCLOUD_PKG
             "waze" -> WAZE_PKG
             "maps" -> null
@@ -85,7 +86,7 @@ class AppLauncher(
         val missingMsg = context.getString(
             when (cmd) {
                 "ytmusic" -> if (viaNewPipe) R.string.launch_missing_newpipe else R.string.launch_missing_ytmusic
-                "youtube" -> R.string.launch_missing_youtube
+                "youtube" -> if (viaNewPipe) R.string.launch_missing_newpipe else R.string.launch_missing_youtube
                 "soundcloud" -> R.string.launch_missing_soundcloud
                 "waze" -> R.string.launch_missing_waze
                 "maps" -> R.string.launch_missing_maps

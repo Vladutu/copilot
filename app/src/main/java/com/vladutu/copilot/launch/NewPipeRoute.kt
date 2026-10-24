@@ -1,7 +1,8 @@
 package com.vladutu.copilot.launch
 
 /**
- * Routes `ytmusic` launches to NewPipe instead of the YouTube Music app.
+ * Routes `ytmusic` launches to NewPipe instead of the YouTube Music app, and `youtube`
+ * launches to NewPipe instead of the YouTube app (those URLs are passed through as-is).
  *
  * Why: the YouTube Music app refuses background playback without Premium, and Copilot's
  * auto-return pushes it to the background right after every command. NewPipe plays the

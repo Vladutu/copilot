@@ -397,6 +397,44 @@ class AppLauncherTest {
         assertEquals("https://www.youtube.com/playlist?list=RDabc", intent.data.toString())
     }
 
+    @Test fun `newpipe on - youtube video goes to NewPipe with the URL unchanged`() {
+        NewPipeRoute.enabled = true
+        val res = launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertTrue(res is AppLauncher.Result.Ok)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+        // A video the driver asked to watch is not turned into its Mix.
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", intent.data.toString())
+    }
+
+    @Test fun `newpipe on - youtube playlist goes to NewPipe`() {
+        NewPipeRoute.enabled = true
+        launcher.launch(msg("youtube", Form.PLAYLIST, "https://www.youtube.com/playlist?list=PLabc"))
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+        assertEquals("https://www.youtube.com/playlist?list=PLabc", intent.data.toString())
+        assertEquals(false, ShuffleRequest.pending(NewPipeRoute.PKG))
+    }
+
+    @Test fun `newpipe on - youtube SavedItem replays through NewPipe`() {
+        NewPipeRoute.enabled = true
+        val item = SavedItem(
+            form = Form.SONG, id = "dQw4w9WgXcQ", title = "T", imageUrl = null,
+            url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ", cmd = "youtube", savedAt = 0,
+        )
+        launcher.replay(item)
+        val intent = shadowOf(context as android.app.Application).nextStartedActivity
+        assertEquals(NewPipeRoute.PKG, intent.`package`)
+    }
+
+    @Test fun `newpipe on - youtube launch still does not arm autoswitch`() {
+        NewPipeRoute.enabled = true
+        AutoSwitchBack.disarm()
+        AutoSwitchBack.onForeground("com.vladutu.copilot")
+        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
+        assertFalse(AutoSwitchBack.isArmed())
+    }
+
     @Test fun `newpipe on - shuffled playlist arms a shuffle request`() {
         NewPipeRoute.enabled = true
         launcher.launch(msg("ytmusic", Form.PLAYLIST, "https://music.youtube.com/watch?list=PLx&shuffle=1"))
@@ -444,10 +482,8 @@ class AppLauncherTest {
         assertTrue(AutoSwitchBack.isArmed())
     }
 
-    @Test fun `newpipe on - youtube and soundcloud commands are untouched`() {
+    @Test fun `newpipe on - soundcloud command is untouched`() {
         NewPipeRoute.enabled = true
-        launcher.launch(msg("youtube", Form.SONG, "https://www.youtube.com/watch?v=abc"))
-        assertEquals(AppLauncher.YOUTUBE_PKG, shadowOf(context as android.app.Application).nextStartedActivity.`package`)
         launcher.launch(msg("soundcloud", Form.SONG, "https://soundcloud.com/a/b"))
         assertEquals(AppLauncher.SOUNDCLOUD_PKG, shadowOf(context as android.app.Application).nextStartedActivity.`package`)
     }

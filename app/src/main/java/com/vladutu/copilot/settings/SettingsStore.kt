@@ -125,8 +125,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { prefs -> prefs[KEY_SPLIT_SCREEN] = enabled }
     }
 
-    /** Whether `ytmusic` commands open NewPipe (background, no account) instead of the
-     *  YouTube Music app. Defaults off. Mirrored into [com.vladutu.copilot.launch.NewPipeRoute]. */
+    /** Whether `ytmusic` and `youtube` commands open NewPipe (background, no account)
+     *  instead of the YouTube Music / YouTube apps. Defaults off. Mirrored into [com.vladutu.copilot.launch.NewPipeRoute]. */
     val ytMusicViaNewPipeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[KEY_YTMUSIC_VIA_NEWPIPE] ?: false
     }

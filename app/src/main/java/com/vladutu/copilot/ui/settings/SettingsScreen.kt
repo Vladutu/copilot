@@ -219,8 +219,9 @@ fun SettingsScreen(
                 onCheckedChange = onSplitScreenChange,
             )
             // Off = ytmusic commands open the YouTube Music app (needs Premium for background
-            // play). On = they open NewPipe: audio-only, background, no Google account; a
-            // single song is launched as its Mix so playback continues — see launch/NewPipeRoute.kt.
+            // play) and youtube commands open the YouTube app. On = both open NewPipe:
+            // audio-only, background, no Google account; a single song is launched as its
+            // Mix so playback continues, a youtube link is opened as-is — see launch/NewPipeRoute.kt.
             SwitchRow(
                 label = stringResource(R.string.settings_newpipe_label),
                 checked = ytMusicViaNewPipe,
