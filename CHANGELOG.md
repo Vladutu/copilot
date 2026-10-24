@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.30.1] - 2026-10-24
+
+### Added
+- Route youtube commands through NewPipe when the toggle is on
+
 ## [0.30.0] - 2026-10-16
 
 ### Added
@@ -476,6 +481,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.30.1]: https://github.com/Vladutu/copilot/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/Vladutu/copilot/compare/v0.29.2...v0.30.0
 [0.29.2]: https://github.com/Vladutu/copilot/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/Vladutu/copilot/compare/v0.29.0...v0.29.1
