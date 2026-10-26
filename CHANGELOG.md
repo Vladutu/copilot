@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.31.2] - 2026-10-26
+
+### Added
+- Download percentage and stale APK cleanup
+
 ## [0.31.0] - 2026-10-26
 
 ### Added
@@ -486,6 +491,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.31.2]: https://github.com/Vladutu/copilot/compare/v0.31.1...v0.31.2
 [0.31.0]: https://github.com/Vladutu/copilot/compare/v0.30.1...v0.31.0
 [0.30.1]: https://github.com/Vladutu/copilot/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/Vladutu/copilot/compare/v0.29.2...v0.30.0
