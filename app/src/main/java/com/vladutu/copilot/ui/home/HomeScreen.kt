@@ -58,6 +58,7 @@ import com.vladutu.copilot.ui.NowPlayingStrip
 import com.vladutu.copilot.ui.TrailingStop
 import com.vladutu.copilot.ui.theme.LocalPageSizes
 import com.vladutu.copilot.ui.theme.LocalThemeSpec
+import com.vladutu.copilot.update.UpdateManager
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -85,6 +86,8 @@ fun HomeScreen(
     onOpenStatus: () -> Unit,
     onOpenSettings: () -> Unit,
     onBackFromHome: () -> Unit,
+    update: UpdateManager.State = UpdateManager.State.Idle,
+    onInstallUpdate: () -> Unit = {},
 ) {
     BackHandler(onBack = onBackFromHome)
 
@@ -109,7 +112,13 @@ fun HomeScreen(
             .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TopBar(state = state, onOpenStatus = onOpenStatus, onOpenSettings = onOpenSettings)
+        TopBar(
+            state = state,
+            update = update,
+            onInstallUpdate = onInstallUpdate,
+            onOpenStatus = onOpenStatus,
+            onOpenSettings = onOpenSettings,
+        )
 
         // Rail (redesign-spec §3a) on the shared knob grid, paged at the menu size.
         // The now-playing strip rides in the grid's bottom slot so the heart — Home-only,
@@ -155,6 +164,8 @@ fun HomeScreen(
 @Composable
 private fun TopBar(
     state: UiState,
+    update: UpdateManager.State,
+    onInstallUpdate: () -> Unit,
     onOpenStatus: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -176,6 +187,7 @@ private fun TopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            UpdateLabel(update = update, onInstall = onInstallUpdate)
             Text(
                 text = currentTime(),
                 style = MaterialTheme.typography.titleMedium,
@@ -195,6 +207,35 @@ private fun TopBar(
             }
         }
     }
+}
+
+/**
+ * Self-update affordance (see [UpdateManager]): nothing while idle, otherwise a short label
+ * before the clock. Tap-only like the rest of the bar's chrome — never a knob stop — and
+ * tapping starts the download and system installer straight away, no confirmation.
+ */
+@Composable
+private fun UpdateLabel(update: UpdateManager.State, onInstall: () -> Unit) {
+    val (text, color) = when (update) {
+        UpdateManager.State.Idle -> return
+        is UpdateManager.State.Downloading ->
+            stringResource(R.string.update_downloading) to MaterialTheme.colorScheme.onSurfaceVariant
+        is UpdateManager.State.Available ->
+            if (update.error != null) {
+                stringResource(R.string.update_failed) to MaterialTheme.colorScheme.error
+            } else {
+                stringResource(R.string.update_available) to MaterialTheme.colorScheme.primary
+            }
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = color,
+        modifier = Modifier
+            .focusProperties { canFocus = false }
+            .clickable(enabled = update is UpdateManager.State.Available, onClick = onInstall)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 /**

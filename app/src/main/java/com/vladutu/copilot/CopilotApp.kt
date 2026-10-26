@@ -20,7 +20,7 @@ import java.util.Locale
 
 class CopilotApp : Application() {
 
-    val locator: ServiceLocator by lazy { ServiceLocator(applicationContext) }
+    val locator: ServiceLocator by lazy { ServiceLocator(applicationContext, applicationScope) }
 
     val applicationScope: kotlinx.coroutines.CoroutineScope =
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)

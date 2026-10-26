@@ -46,6 +46,11 @@ away. The on-screen UI is built for driving: a knob-navigable grid, no typing.
   action* set to **Background player**.
 - **Status screen** — connection health, recent events, clock skew vs. the phone,
   downloadable diagnostic logs, and grant buttons for missing permissions.
+- **Self-update.** Every start checks the latest GitHub release; when it is newer
+  an **Update available** label appears in the Home top bar (and on the version in
+  Settings). Tapping it downloads the APK and opens Android's installer — no
+  sideloading from a laptop. First time, Android asks once to allow installs from
+  Copilot. Lives in `update/` (`UpdateChecker` → `ApkDownloader` → `ApkInstaller`).
 
 ## Permissions
 
@@ -71,6 +76,7 @@ The rest are standard permissions, granted automatically at install / first run:
 | `FOREGROUND_SERVICE` (+ `_DATA_SYNC`, `_SPECIAL_USE`) | Keep the ntfy listener and the overlay bubble alive in the background |
 | `POST_NOTIFICATIONS` | Show the persistent foreground-service notification (Android 13+) |
 | `RECEIVE_BOOT_COMPLETED` | Optional auto-start on boot (off by default; toggle in Settings) |
+| `REQUEST_INSTALL_PACKAGES` | Self-update: open the system installer on a downloaded release APK (one-time "allow from this source" prompt) |
 
 Also set **Battery optimization → Unrestricted** so Android doesn't kill the
 listener. See [First-time carbox setup](#first-time-carbox-setup) for the

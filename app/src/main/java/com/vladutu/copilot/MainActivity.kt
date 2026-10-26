@@ -86,6 +86,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startListenerService()
+        // One update check per cold start; a recreate (orientation, language) keeps the
+        // result already held by the manager rather than hitting GitHub again.
+        if (savedInstanceState == null) (application as CopilotApp).locator.updateManager.checkNow()
         setContent {
             // Collected above the theme wrapper so a Settings change restyles the whole
             // tree (status bars included) in place — no activity recreate.
@@ -214,6 +217,7 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
             val liked by app.locator.likedSongsRepository.items().collectAsStateWithLifecycle(emptyList())
             val isLiked = nowPlaying?.let { np -> liked.any { it.matches(np.title, np.artist) } } ?: false
             val savedMsg = stringResource(R.string.liked_saved)
+            val update by app.locator.updateManager.state.collectAsStateWithLifecycle()
             HomeScreen(
                 state = uiState,
                 nowPlaying = nowPlaying,
@@ -232,6 +236,8 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 onOpenStatus = { nav.navigate("status") },
                 onOpenSettings = { nav.navigate("settings") },
                 onBackFromHome = onLeftToOtherApp,
+                update = update,
+                onInstallUpdate = { app.locator.updateManager.install() },
             )
         }
 
@@ -432,7 +438,10 @@ private fun CopilotNav(onLeftToOtherApp: () -> Unit) {
                 .collectAsStateWithLifecycle(initialValue = null)
             val copiedMsg = stringResource(R.string.settings_topic_copied)
             val scope = rememberCoroutineScope()
+            val update by app.locator.updateManager.state.collectAsStateWithLifecycle()
             SettingsScreen(
+                update = update,
+                onInstallUpdate = { app.locator.updateManager.install() },
                 themeId = themeId,
                 onThemeChange = { id ->
                     app.applicationScope.launch { app.locator.settingsStore.setTheme(id) }
