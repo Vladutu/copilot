@@ -76,6 +76,7 @@
     <string name="settings_title">Setări</string>
     <string name="update_available">Actualizare disponibilă</string>
     <string name="update_downloading">Se descarcă…</string>
+    <string name="update_downloading_percent">Se descarcă… %1$d%%</string>
     <string name="update_failed">Actualizarea a eșuat · apasă pentru a reîncerca</string>
     <string name="settings_update_available">v%1$s → v%2$s disponibil</string>
     <string name="settings_autostart_label">Pornește Copilot când pornește mașina</string>

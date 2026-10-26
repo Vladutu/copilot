@@ -11,8 +11,9 @@ import java.io.File
 
 /**
  * The self-update state machine behind the Home top-bar label. One check per process start
- * ([checkNow] from MainActivity); a tap on the label calls [install], which downloads the APK
- * and hands it to the system installer. Android's install sheet takes over from there, and on
+ * ([checkNow] from MainActivity, which first runs [cleanup] to drop APKs from earlier
+ * updates); a tap on the label calls [install], which downloads the APK and hands it to the
+ * system installer. Android's install sheet takes over from there, and on
  * success the process is replaced, so there is no "installed" state to model.
  *
  * Collaborators are plain functions so the state machine is testable without OkHttp or an
@@ -22,14 +23,16 @@ import java.io.File
 class UpdateManager(
     private val scope: CoroutineScope,
     private val check: suspend () -> UpdateChecker.Update?,
-    private val download: suspend (UpdateChecker.Update) -> File,
+    private val download: suspend (UpdateChecker.Update, onProgress: (Int) -> Unit) -> File,
     private val install: (File) -> Unit,
+    private val cleanup: suspend () -> Unit = {},
 ) {
 
     sealed interface State {
         data object Idle : State
         data class Available(val update: UpdateChecker.Update, val error: String? = null) : State
-        data class Downloading(val update: UpdateChecker.Update) : State
+        /** [percent] is null until the first progress report (or throughout, if the length is unknown). */
+        data class Downloading(val update: UpdateChecker.Update, val percent: Int? = null) : State
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -39,6 +42,7 @@ class UpdateManager(
 
     fun checkNow() {
         scope.launch {
+            cleanup()
             val update = check() ?: return@launch
             DiagnosticLog.i(TAG, "update available: ${update.version}")
             _state.value = State.Available(update)
@@ -51,7 +55,9 @@ class UpdateManager(
         _state.value = State.Downloading(current.update)
         installJob = scope.launch {
             try {
-                val apk = download(current.update)
+                val apk = download(current.update) { percent ->
+                    _state.value = State.Downloading(current.update, percent)
+                }
                 install(apk)
                 _state.value = State.Available(current.update)
             } catch (e: CancellationException) {

@@ -219,7 +219,7 @@ private fun UpdateLabel(update: UpdateManager.State, onInstall: () -> Unit) {
     val (text, color) = when (update) {
         UpdateManager.State.Idle -> return
         is UpdateManager.State.Downloading ->
-            stringResource(R.string.update_downloading) to MaterialTheme.colorScheme.onSurfaceVariant
+            downloadingLabel(update.percent) to MaterialTheme.colorScheme.onSurfaceVariant
         is UpdateManager.State.Available ->
             if (update.error != null) {
                 stringResource(R.string.update_failed) to MaterialTheme.colorScheme.error
@@ -237,6 +237,11 @@ private fun UpdateLabel(update: UpdateManager.State, onInstall: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 4.dp),
     )
 }
+
+@Composable
+private fun downloadingLabel(percent: Int?): String =
+    if (percent == null) stringResource(R.string.update_downloading)
+    else stringResource(R.string.update_downloading_percent, percent)
 
 /**
  * Home-only Like control that slots into the now-playing strip: the trailing knob stop

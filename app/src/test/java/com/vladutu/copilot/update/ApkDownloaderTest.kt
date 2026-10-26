@@ -9,6 +9,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
@@ -41,6 +42,54 @@ class ApkDownloaderTest {
         assertEquals("copilot-0.31.0.apk", file.name)
         assertEquals(tmp.root, file.parentFile)
         assertArrayEquals(bytes, file.readBytes())
+    }
+
+    @Test fun `reports progress as whole percentages up to 100`() = runTest {
+        val bytes = ByteArray(200_000) { 1 }
+        server.enqueue(MockResponse().setBody(Buffer().write(bytes)))
+        val seen = mutableListOf<Int>()
+
+        downloader.download(
+            UpdateChecker.Update("0.31.0", server.url("/copilot-0.31.0.apk").toString()),
+            onProgress = { seen += it },
+        )
+
+        assertEquals(100, seen.last())
+        assertEquals(seen.sorted(), seen)
+        assertEquals(seen.distinct(), seen)
+        assertTrue("expected intermediate progress, got $seen", seen.size > 2)
+    }
+
+    @Test fun `reports no progress when the length is unknown`() = runTest {
+        server.enqueue(MockResponse().setChunkedBody("chunked body", 4))
+        val seen = mutableListOf<Int>()
+
+        downloader.download(
+            UpdateChecker.Update("0.31.0", server.url("/copilot-0.31.0.apk").toString()),
+            onProgress = { seen += it },
+        )
+
+        assertEquals(emptyList<Int>(), seen)
+    }
+
+    @Test fun `deleteStale removes apks that are not newer than the running version`() {
+        val old = tmp.root.resolve("copilot-0.30.1.apk").apply { writeText("old") }
+        val same = tmp.root.resolve("copilot-0.31.0.apk").apply { writeText("just installed") }
+        val newer = tmp.root.resolve("copilot-0.31.1.apk").apply { writeText("not yet installed") }
+        val partial = tmp.root.resolve("copilot-0.31.1.apk.part").apply { writeText("half") }
+        val other = tmp.root.resolve("notes.txt").apply { writeText("unrelated") }
+
+        downloader.deleteStale(currentVersion = "0.31.0")
+
+        assertFalse(old.exists())
+        assertFalse(same.exists())
+        assertTrue(newer.exists())
+        assertFalse(partial.exists())
+        assertTrue(other.exists())
+    }
+
+    @Test fun `deleteStale tolerates a missing folder`() {
+        ApkDownloader(OkHttpClient(), tmp.root.resolve("never-created")).deleteStale("0.31.0")
     }
 
     @Test fun `http error throws and leaves no partial file behind`() = runTest {

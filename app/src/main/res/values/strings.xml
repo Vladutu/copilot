@@ -76,6 +76,7 @@
     <string name="settings_title">Settings</string>
     <string name="update_available">Update available</string>
     <string name="update_downloading">Downloading…</string>
+    <string name="update_downloading_percent">Downloading… %1$d%%</string>
     <string name="update_failed">Update failed · tap to retry</string>
     <string name="settings_update_available">v%1$s → v%2$s available</string>
     <string name="settings_autostart_label">Start Copilot when the car turns on</string>

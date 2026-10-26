@@ -23,7 +23,10 @@ import com.vladutu.copilot.update.ApkDownloader
 import com.vladutu.copilot.update.ApkInstaller
 import com.vladutu.copilot.update.UpdateChecker
 import com.vladutu.copilot.update.UpdateManager
+import com.vladutu.copilot.BuildConfig
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 
@@ -68,6 +71,7 @@ class ServiceLocator(private val appContext: Context, private val appScope: Coro
             check = UpdateChecker(okHttp)::check,
             download = downloader::download,
             install = installer::install,
+            cleanup = { withContext(Dispatchers.IO) { downloader.deleteStale(BuildConfig.VERSION_NAME) } },
         )
     }
 
