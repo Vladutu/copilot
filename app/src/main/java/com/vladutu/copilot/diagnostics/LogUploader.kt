@@ -45,13 +45,13 @@ class LogUploader(
     suspend fun upload(content: String): String = withContext(Dispatchers.IO) {
         val text = sanitize(scrub(content))
         try {
-            uploadDpaste(text)
+            uploadDpaste(text).also { DiagnosticLog.i(TAG, "uploaded to dpaste: $it") }
         } catch (e: CancellationException) {
             throw e
         } catch (primary: IOException) {
             DiagnosticLog.w(TAG, "dpaste upload failed, trying c-net: ${primary.message}")
             try {
-                uploadCnet(text)
+                uploadCnet(text).also { DiagnosticLog.i(TAG, "uploaded to c-net: $it") }
             } catch (e: CancellationException) {
                 throw e
             } catch (fallback: IOException) {
