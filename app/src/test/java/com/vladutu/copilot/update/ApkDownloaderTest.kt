@@ -79,8 +79,9 @@ class ApkDownloaderTest {
         val partial = tmp.root.resolve("copilot-0.31.1.apk.part").apply { writeText("half") }
         val other = tmp.root.resolve("notes.txt").apply { writeText("unrelated") }
 
-        downloader.deleteStale(currentVersion = "0.31.0")
+        val deleted = downloader.deleteStale(currentVersion = "0.31.0")
 
+        assertEquals(listOf("copilot-0.30.1.apk", "copilot-0.31.0.apk", "copilot-0.31.1.apk.part"), deleted.sorted())
         assertFalse(old.exists())
         assertFalse(same.exists())
         assertTrue(newer.exists())
@@ -89,7 +90,8 @@ class ApkDownloaderTest {
     }
 
     @Test fun `deleteStale tolerates a missing folder`() {
-        ApkDownloader(OkHttpClient(), tmp.root.resolve("never-created")).deleteStale("0.31.0")
+        val deleted = ApkDownloader(OkHttpClient(), tmp.root.resolve("never-created")).deleteStale("0.31.0")
+        assertEquals(emptyList<String>(), deleted)
     }
 
     @Test fun `http error throws and leaves no partial file behind`() = runTest {

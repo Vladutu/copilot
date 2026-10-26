@@ -1,5 +1,6 @@
 package com.vladutu.copilot.update
 
+import com.vladutu.copilot.diagnostics.DiagnosticLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -76,10 +77,12 @@ class ApkDownloader(
      * Removes leftovers from earlier updates: every `copilot-X.Y.Z.apk` not newer than
      * [currentVersion] (the installer has its own copy once it finished) plus any `.part`
      * file (a download that did not complete). A newer APK is kept — it is the update the
-     * user has not installed yet.
+     * user has not installed yet. Returns the names it removed; each is also written to the
+     * diagnostic log so the cleanup can be verified from the car.
      */
-    fun deleteStale(currentVersion: String) {
-        val files = dir.listFiles() ?: return
+    fun deleteStale(currentVersion: String): List<String> {
+        val files = dir.listFiles() ?: return emptyList()
+        val deleted = mutableListOf<String>()
         for (file in files) {
             val name = file.name
             val stale = when {
@@ -90,11 +93,16 @@ class ApkDownloader(
                 }
                 else -> false
             }
-            if (stale) file.delete()
+            if (stale && file.delete()) {
+                deleted += name
+                DiagnosticLog.i(TAG, "deleted stale update $name (running $currentVersion)")
+            }
         }
+        return deleted
     }
 
     private companion object {
+        const val TAG = "Update"
         const val COPY_CHUNK = 8 * 1024L
     }
 }
