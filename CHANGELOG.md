@@ -5,6 +5,11 @@ released version tag and is built from the commits between that tag and the
 previous one. This project loosely follows [Keep a Changelog](https://keepachangelog.com)
 and [Semantic Versioning](https://semver.org).
 
+## [0.31.6] - 2026-10-26
+
+### Added
+- Log which paste host served a successful upload
+
 ## [0.31.5] - 2026-10-26
 
 ### Fixed
@@ -501,6 +506,7 @@ Initial released version. Highlights of the work leading up to it:
 ### Build
 - Release automation — wrapper, signing, `release.sh`, docs.
 
+[0.31.6]: https://github.com/Vladutu/copilot/compare/v0.31.5...v0.31.6
 [0.31.5]: https://github.com/Vladutu/copilot/compare/v0.31.4...v0.31.5
 [0.31.3]: https://github.com/Vladutu/copilot/compare/v0.31.2...v0.31.3
 [0.31.2]: https://github.com/Vladutu/copilot/compare/v0.31.1...v0.31.2
