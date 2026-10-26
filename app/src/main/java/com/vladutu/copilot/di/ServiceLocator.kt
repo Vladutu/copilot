@@ -19,7 +19,13 @@ import com.vladutu.copilot.timemachine.TempPlaylistMinter
 import com.vladutu.copilot.timemachine.TimeMachineCache
 import com.vladutu.copilot.timemachine.TimeMachineRepository
 import com.vladutu.copilot.timemachine.wikipedia.WikipediaYearEndSource
+import com.vladutu.copilot.update.ApkDownloader
+import com.vladutu.copilot.update.ApkInstaller
+import com.vladutu.copilot.update.UpdateChecker
+import com.vladutu.copilot.update.UpdateManager
+import kotlinx.coroutines.CoroutineScope
 import okhttp3.OkHttpClient
+import java.io.File
 
 private val Context.historyDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_history")
 private val Context.bubbleDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_bubble")
@@ -28,7 +34,7 @@ private val Context.likedDataStore: DataStore<Preferences> by preferencesDataSto
 private val Context.timeMachineDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_time_machine")
 internal val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "copilot_settings")
 
-class ServiceLocator(private val appContext: Context) {
+class ServiceLocator(private val appContext: Context, private val appScope: CoroutineScope) {
     val okHttp: OkHttpClient by lazy { OkHttpClient() }
 
     val historyRepository: HistoryRepository by lazy {
@@ -52,6 +58,18 @@ class ServiceLocator(private val appContext: Context) {
     val settingsStore: SettingsStore by lazy { SettingsStore(appContext.settingsDataStore) }
 
     val logUploader: LogUploader by lazy { LogUploader(okHttp) }
+
+    val updateManager: UpdateManager by lazy {
+        // Download folder must match res/xml/file_paths.xml (the FileProvider share root).
+        val downloader = ApkDownloader(okHttp, File(appContext.cacheDir, "updates"))
+        val installer = ApkInstaller(appContext)
+        UpdateManager(
+            scope = appScope,
+            check = UpdateChecker(okHttp)::check,
+            download = downloader::download,
+            install = installer::install,
+        )
+    }
 
     val discoverRepository: DiscoverRepository by lazy {
         // The only line that names the search backend (spec: containment boundary —

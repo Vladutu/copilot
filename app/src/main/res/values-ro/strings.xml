@@ -74,6 +74,10 @@
     <string name="settings_general_label">General</string>
     <string name="liked_listener_label">Copilot redare curentă</string>
     <string name="settings_title">Setări</string>
+    <string name="update_available">Actualizare disponibilă</string>
+    <string name="update_downloading">Se descarcă…</string>
+    <string name="update_failed">Actualizarea a eșuat · apasă pentru a reîncerca</string>
+    <string name="settings_update_available">v%1$s → v%2$s disponibil</string>
     <string name="settings_autostart_label">Pornește Copilot când pornește mașina</string>
     <string name="settings_split_screen_label">Deschide aplicațiile în ecran împărțit</string>
     <string name="settings_newpipe_label">Redă YouTube și YouTube Music prin NewPipe</string>

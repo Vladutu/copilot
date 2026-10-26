@@ -64,6 +64,9 @@ import com.vladutu.copilot.ui.theme.PageSizeDefaults
 import com.vladutu.copilot.ui.theme.PilotOk
 import com.vladutu.copilot.ui.theme.TileAppearanceDefaults
 import com.vladutu.copilot.ui.theme.themeById
+import com.vladutu.copilot.update.UpdateManager
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.focus.focusProperties
 import kotlin.math.roundToInt
 
 /**
@@ -111,6 +114,8 @@ fun SettingsScreen(
     onRegenerate: () -> Unit,
     onOpenLogs: () -> Unit,
     onBack: () -> Unit,
+    update: UpdateManager.State = UpdateManager.State.Idle,
+    onInstallUpdate: () -> Unit = {},
 ) {
     val ctx = LocalContext.current
     var showQr by remember { mutableStateOf(false) }
@@ -128,11 +133,29 @@ fun SettingsScreen(
             onBack = onBack,
             trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "v${BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Same affordance as the Home top bar: a second place to start an update.
+                    when (update) {
+                        is UpdateManager.State.Available -> Text(
+                            text = stringResource(
+                                R.string.settings_update_available, BuildConfig.VERSION_NAME, update.update.version,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (update.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .focusProperties { canFocus = false }
+                                .clickable(onClick = onInstallUpdate),
+                        )
+                        is UpdateManager.State.Downloading -> Text(
+                            text = stringResource(R.string.update_downloading),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        UpdateManager.State.Idle -> Text(
+                            text = "v${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = onOpenLogs, modifier = Modifier.size(64.dp)) {
                         Icon(
                             imageVector = Icons.Filled.BugReport,
