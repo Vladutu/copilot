@@ -23,7 +23,7 @@ class UpdateManagerTest {
     private val update = UpdateChecker.Update("0.31.0", "https://x/copilot-0.31.0.apk")
 
     @Test fun `starts idle and becomes available after a successful check`() = runTest {
-        val manager = UpdateManager(eager(), check = { update }, download = { File("unused") }, install = {})
+        val manager = UpdateManager(eager(), check = { update }, download = { _, _ -> File("unused") }, install = {})
         manager.state.test {
             assertEquals(UpdateManager.State.Idle, awaitItem())
             manager.checkNow()
@@ -31,8 +31,21 @@ class UpdateManagerTest {
         }
     }
 
+    @Test fun `checkNow runs cleanup before asking for updates`() = runTest {
+        val order = mutableListOf<String>()
+        val manager = UpdateManager(
+            eager(),
+            check = { order += "check"; null },
+            download = { _, _ -> File("unused") },
+            install = {},
+            cleanup = { order += "cleanup" },
+        )
+        manager.checkNow()
+        assertEquals(listOf("cleanup", "check"), order)
+    }
+
     @Test fun `stays idle when there is nothing newer`() = runTest {
-        val manager = UpdateManager(eager(), check = { null }, download = { File("unused") }, install = {})
+        val manager = UpdateManager(eager(), check = { null }, download = { _, _ -> File("unused") }, install = {})
         manager.checkNow()
         assertEquals(UpdateManager.State.Idle, manager.state.value)
     }
@@ -44,7 +57,7 @@ class UpdateManagerTest {
         val manager = UpdateManager(
             eager(),
             check = { update },
-            download = { gate.await(); apk },
+            download = { _, _ -> gate.await(); apk },
             install = { installed = it },
         )
         manager.checkNow()
@@ -58,11 +71,28 @@ class UpdateManagerTest {
         }
     }
 
+    @Test fun `download progress is reflected in the downloading state`() = runTest {
+        var report: ((Int) -> Unit)? = null
+        val gate = CompletableDeferred<Unit>()
+        val manager = UpdateManager(
+            eager(),
+            check = { update },
+            download = { _, onProgress -> report = onProgress; gate.await(); File("x") },
+            install = {},
+        )
+        manager.checkNow()
+        manager.install()
+        assertEquals(UpdateManager.State.Downloading(update, percent = null), manager.state.value)
+        report!!(42)
+        assertEquals(UpdateManager.State.Downloading(update, percent = 42), manager.state.value)
+        gate.complete(Unit)
+    }
+
     @Test fun `a failed download goes back to available with an error`() = runTest {
         val manager = UpdateManager(
             eager(),
             check = { update },
-            download = { throw IOException("no network") },
+            download = { _, _ -> throw IOException("no network") },
             install = {},
         )
         manager.checkNow()
@@ -78,7 +108,7 @@ class UpdateManagerTest {
         val manager = UpdateManager(
             eager(),
             check = { update },
-            download = { downloads++; gate.await(); File("x") },
+            download = { _, _ -> downloads++; gate.await(); File("x") },
             install = {},
         )
         manager.checkNow()
@@ -90,7 +120,7 @@ class UpdateManagerTest {
 
     @Test fun `install does nothing when no update is known`() = runTest {
         var downloads = 0
-        val manager = UpdateManager(eager(), check = { null }, download = { downloads++; File("x") }, install = {})
+        val manager = UpdateManager(eager(), check = { null }, download = { _, _ -> downloads++; File("x") }, install = {})
         manager.install()
         assertEquals(0, downloads)
     }

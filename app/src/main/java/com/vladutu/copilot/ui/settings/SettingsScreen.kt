@@ -146,7 +146,8 @@ fun SettingsScreen(
                                 .clickable(onClick = onInstallUpdate),
                         )
                         is UpdateManager.State.Downloading -> Text(
-                            text = stringResource(R.string.update_downloading),
+                            text = update.percent?.let { stringResource(R.string.update_downloading_percent, it) }
+                                ?: stringResource(R.string.update_downloading),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
